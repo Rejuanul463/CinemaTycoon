@@ -97,7 +97,7 @@ namespace CinemaTycoon.UI
         private void HandleCleanlinessChanged(float v)
             { if (cleanlinessSlider) cleanlinessSlider.value = v / 100f; }
 
-        private void HandleStaffHired(Staff s)
+        private void HandleStaffHired(CinemaTycoon.Staff.Staff s)
         {
             if (staffCountText)
                 staffCountText.text = $"Staff: {GameManager.Instance.Staff.ActiveStaff.Count}";
