@@ -1,11 +1,13 @@
 {
   "dependencies": {
+    "com.unity.ai.navigation": "2.0.13",
     "com.unity.collab-proxy": "2.12.4",
     "com.unity.feature.development": "1.0.2",
     "com.unity.inputsystem": "1.19.0",
     "com.unity.multiplayer.center": "1.0.1",
     "com.unity.probuilder": "6.1.2",
     "com.unity.shadergraph": "17.3.0",
+    "com.unity.splines": "2.9.0",
     "com.unity.timeline": "1.8.12",
     "com.unity.ugui": "2.0.0",
     "com.unity.visualscripting": "1.9.11",
