@@ -30,7 +30,7 @@ public class FirstPersonCharacterMovement : MonoBehaviour
 
     private void CharacterMovement()
     {
-        Vector3 characterMovement = inputHandler.moveDirection;
+        Vector3 characterMovement = transform.right * inputHandler.moveDirection.x + transform.forward * inputHandler.moveDirection.z;
         
         if (controller.isGrounded) verticalVelocity = -2f;
         else verticalVelocity -= gravity * Time.deltaTime;
