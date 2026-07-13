@@ -1,0 +1,122 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElementsSchema.xsd">
+
+    <ui:VisualElement class="hud-root" picking-mode="Ignore">
+
+        <!-- ===================== MAIN MENU (full-screen) ===================== -->
+        <ui:VisualElement name="main-menu-panel" class="menu-panel">
+            <ui:VisualElement class="menu-logo-container" picking-mode="Ignore">
+                <ui:Label text="CINEMA"             class="menu-title-primary"   picking-mode="Ignore" />
+                <ui:Label text="TYCOON"             class="menu-title-secondary" picking-mode="Ignore" />
+                <ui:Label text="MANAGEMENT SIMULATOR" class="menu-subtitle"      picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="menu-buttons-container">
+                <ui:Button text="START GAME" name="start-button" class="menu-button" />
+                <ui:Button text="QUIT"       name="quit-button"  class="menu-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===================== GAMEPLAY HUD (hidden until play) ===================== -->
+        <ui:VisualElement name="gameplay-hud" class="hud-gameplay-container" picking-mode="Ignore">
+
+            <!-- TOP BAR -->
+            <ui:VisualElement class="glass-panel top-bar">
+                <ui:VisualElement class="stat-container" picking-mode="Ignore">
+                    <ui:VisualElement class="stat-item" picking-mode="Ignore">
+                        <ui:Label text="CASH:"  class="text-label" picking-mode="Ignore" />
+                        <ui:Label text="$1,000" name="balance-label" class="text-value value-gold" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="stat-container" picking-mode="Ignore">
+                    <ui:VisualElement class="stat-item" picking-mode="Ignore">
+                        <ui:Label text="SATISFACTION:" class="text-label" picking-mode="Ignore" />
+                        <ui:Label text="75.0%"         name="rating-label" class="text-value value-green" picking-mode="Ignore" />
+                        <ui:ProgressBar value="75"     name="rating-bar"   class="hud-progress-bar" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- LEFT SIDEBAR (anchored top-left to bottom) -->
+            <ui:VisualElement name="management-panel" class="management-sidebar glass-panel">
+                <ui:Label text="MANAGEMENT" class="sidebar-title" picking-mode="Ignore" />
+
+                <ui:VisualElement class="sidebar-section" picking-mode="Ignore">
+                    <ui:Label text="STAFF" class="section-title" picking-mode="Ignore" />
+                    <ui:Button text="Hire Cashier ($150)" name="hire-cashier-button" class="action-button" />
+                    <ui:Button text="Hire Janitor ($100)" name="hire-janitor-button" class="action-button" />
+                    <ui:Button text="Hire Guard ($100)"   name="hire-guard-button"   class="action-button" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="sidebar-section" picking-mode="Ignore">
+                    <ui:Label text="MOVIES" class="section-title" picking-mode="Ignore" />
+                    <ui:VisualElement name="movie-buttons-container" picking-mode="Ignore" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="sidebar-section" picking-mode="Ignore">
+                    <ui:Label text="UPGRADES" class="section-title" picking-mode="Ignore" />
+                    <ui:Button text="Premium Popcorn ($250)"    name="buy-popcorn-button"    class="action-button" />
+                    <ui:Button text="Faster Cashier ($250)"     name="buy-cashier-button"    class="action-button" />
+                    <ui:Button text="Comfy Seats ($250)"        name="buy-seats-button"      class="action-button" />
+                    <ui:Button text="Marketing Campaign ($250)" name="buy-marketing-button"  class="action-button" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- NOTIFICATION AREA (anchored top-right) -->
+            <ui:VisualElement name="notification-container" class="notification-area-relative" picking-mode="Ignore" />
+
+            <!-- SCHEDULE PANEL (anchored bottom-left, offset from sidebar) -->
+            <ui:VisualElement class="glass-panel schedule-panel">
+                <ui:Label text="Now Playing: —" name="now-playing-label" class="text-value" picking-mode="Ignore" style="margin-bottom: 6px;" />
+                <ui:VisualElement style="flex-direction: row; align-items: center;" picking-mode="Ignore">
+                    <ui:Label text="CLEANLINESS:" class="text-label" picking-mode="Ignore" />
+                    <ui:ProgressBar value="100" name="cleanliness-bar" class="hud-progress-bar cleanliness-bar" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- STAFF PANEL (anchored bottom-right) -->
+            <ui:VisualElement class="glass-panel staff-panel">
+                <ui:Label text="Staff: 0" name="staff-count-label" class="text-value" picking-mode="Ignore" style="margin-bottom: 4px;" />
+                <ui:Label text="Last Ticket: —" name="last-ticket-label" class="text-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <!-- ===================== PAUSE OVERLAY ===================== -->
+        <ui:VisualElement name="pause-overlay" class="fullscreen-overlay" style="display: none;">
+            <ui:Label text="PAUSED" class="overlay-title" picking-mode="Ignore" />
+            <ui:VisualElement class="menu-buttons-container">
+                <ui:Button text="RESUME"            name="resume-button"   class="menu-button" />
+                <ui:Button text="RESTART"           name="restart-button"  class="menu-button" />
+                <ui:Button text="SETTINGS"          name="settings-button" class="menu-button" />
+                <ui:Button text="EXIT TO MAIN MENU" name="exit-button"     class="menu-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===================== SETTINGS OVERLAY ===================== -->
+        <ui:VisualElement name="settings-overlay" class="fullscreen-overlay" style="display: none;">
+            <ui:Label text="SETTINGS" class="overlay-title" picking-mode="Ignore" />
+            <ui:VisualElement class="glass-panel" style="flex-direction: column; width: 360px; padding: 24px; margin-bottom: 24px;">
+                <ui:Label text="GAME MECHANICS" class="sidebar-title" picking-mode="Ignore" style="margin-bottom: 12px;" />
+                <ui:Label text="• Cleanliness floor: 50% — hire Janitors to clean"     class="text-label" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• Staff wages paid every 15s ($5 per staff member)"    class="text-label" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• Spill event: -15 Satisfaction if unhandled"          class="text-label" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• VIP event: -25 Satisfaction if Guard is missing"     class="text-label" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• Balance hits $0 or Satisfaction hits 0% = Game Over" class="text-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:Button text="BACK" name="settings-back-button" class="menu-button" />
+        </ui:VisualElement>
+
+        <!-- ===================== GAME OVER OVERLAY ===================== -->
+        <ui:VisualElement name="gameover-overlay" class="fullscreen-overlay" style="display: none;">
+            <ui:Label text="GAME OVER" class="overlay-title" style="color: #e74c3c;" picking-mode="Ignore" />
+            <ui:Label text="You went bankrupt!" name="gameover-reason-label" class="text-value" picking-mode="Ignore" style="margin-bottom: 36px; font-size: 18px;" />
+            <ui:VisualElement class="menu-buttons-container">
+                <ui:Button text="RESTART GAME" name="gameover-restart-button" class="menu-button" />
+                <ui:Button text="EXIT"         name="gameover-exit-button"    class="menu-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+
+</ui:UXML>

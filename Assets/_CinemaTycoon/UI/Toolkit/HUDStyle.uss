@@ -1,0 +1,328 @@
+/* HUDStyle.uss - Cinema Tycoon
+   Layout strategy: Every HUD panel is absolutely anchored.
+   This avoids Yoga flexbox quirks in Unity UI Toolkit.
+*/
+
+/* =========================================================================
+   ROOT
+   ========================================================================= */
+
+.hud-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.hud-gameplay-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* =========================================================================
+   GLASS PANEL BASE
+   ========================================================================= */
+
+.glass-panel {
+    background-color: rgba(15, 17, 26, 0.88);
+    border-color: rgba(255, 255, 255, 0.10);
+    border-width: 1px;
+    border-radius: 12px;
+    padding: 12px 16px;
+}
+
+/* =========================================================================
+   TOP STATS BAR  (anchored: top / left / right)
+   ========================================================================= */
+
+.top-bar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    height: 52px;
+}
+
+.stat-container {
+    flex-direction: row;
+    align-items: center;
+}
+
+.stat-item {
+    flex-direction: row;
+    align-items: center;
+    margin-right: 16px;
+}
+
+.text-label {
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: #a4b0be;
+    margin-right: 6px;
+}
+
+.text-value {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: #ffffff;
+}
+
+.value-gold  { color: #f1c40f; }
+.value-green { color: #2ecc71; }
+
+/* =========================================================================
+   PROGRESS BARS
+   ========================================================================= */
+
+.hud-progress-bar {
+    width: 110px;
+    height: 14px;
+    margin-left: 8px;
+}
+
+.hud-progress-bar .unity-progress-bar__background {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.10);
+    border-width: 1px;
+    border-radius: 7px;
+}
+
+.hud-progress-bar .unity-progress-bar__progress {
+    background-color: #2ecc71;
+    border-radius: 6px;
+}
+
+.cleanliness-bar .unity-progress-bar__progress {
+    background-color: #3498db;
+}
+
+/* =========================================================================
+   LEFT SIDEBAR  (anchored: top / left / bottom)
+   ========================================================================= */
+
+.management-sidebar {
+    position: absolute;
+    top: 76px;
+    left: 12px;
+    bottom: 12px;
+    width: 258px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 16px 14px;
+    overflow: hidden;
+}
+
+.sidebar-title {
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: #f1c40f;
+    -unity-text-align: middle-center;
+    margin-bottom: 10px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.10);
+    padding-bottom: 8px;
+}
+
+.sidebar-section {
+    margin-bottom: 10px;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.section-title {
+    font-size: 10px;
+    -unity-font-style: bold;
+    color: #5d7a8c;
+    margin-bottom: 5px;
+}
+
+.action-button {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: #dfe6e9;
+    background-color: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.09);
+    border-width: 1px;
+    border-radius: 7px;
+    padding: 7px 10px;
+    margin-bottom: 4px;
+    -unity-text-align: middle-left;
+}
+
+.action-button:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+.action-button:active {
+    background-color: rgba(241, 196, 15, 0.18);
+    border-color: #f1c40f;
+}
+
+.action-button:disabled {
+    opacity: 0.30;
+}
+
+/* =========================================================================
+   NOTIFICATION AREA  (anchored: top / right)
+   ========================================================================= */
+
+.notification-area-relative {
+    position: absolute;
+    top: 76px;
+    right: 12px;
+    width: 290px;
+    flex-direction: column;
+}
+
+.notification-popup {
+    background-color: rgba(30, 20, 20, 0.90);
+    border-color: rgba(231, 76, 60, 0.35);
+    border-width: 1px;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    flex-direction: column;
+    border-left-width: 4px;
+    border-left-color: #e74c3c;
+}
+
+.notification-popup-vip {
+    border-left-color: #f1c40f;
+}
+
+.notification-title {
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: #ffffff;
+    margin-bottom: 3px;
+}
+
+.notification-desc {
+    font-size: 11px;
+    color: #bdc3c7;
+}
+
+/* =========================================================================
+   SCHEDULE PANEL  (anchored: bottom / left — offset from sidebar)
+   ========================================================================= */
+
+.schedule-panel {
+    position: absolute;
+    bottom: 12px;
+    left: 282px;
+    flex-direction: column;
+    padding: 12px 16px;
+}
+
+/* =========================================================================
+   STAFF PANEL  (anchored: bottom / right)
+   ========================================================================= */
+
+.staff-panel {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    flex-direction: column;
+    align-items: flex-end;
+    padding: 12px 16px;
+}
+
+/* =========================================================================
+   MAIN MENU  (full-screen absolute)
+   ========================================================================= */
+
+.menu-panel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(8, 9, 14, 0.97);
+    justify-content: center;
+    align-items: center;
+}
+
+.menu-logo-container {
+    align-items: center;
+    margin-bottom: 52px;
+}
+
+.menu-title-primary {
+    font-size: 72px;
+    -unity-font-style: bold;
+    color: #f1c40f;
+}
+
+.menu-title-secondary {
+    font-size: 52px;
+    -unity-font-style: bold;
+    color: #ffffff;
+    margin-top: -14px;
+}
+
+.menu-subtitle {
+    font-size: 11px;
+    color: #636e72;
+    margin-top: 10px;
+}
+
+.menu-buttons-container {
+    width: 300px;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.menu-button {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    border-width: 1px;
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 12px;
+    -unity-text-align: middle-center;
+}
+
+.menu-button:hover {
+    background-color: rgba(241, 196, 15, 0.14);
+    border-color: rgba(241, 196, 15, 0.60);
+    color: #f1c40f;
+}
+
+.menu-button:active {
+    background-color: rgba(241, 196, 15, 0.28);
+}
+
+/* =========================================================================
+   FULLSCREEN OVERLAYS (full-screen absolute)
+   ========================================================================= */
+
+.fullscreen-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(8, 9, 14, 0.97);
+    justify-content: center;
+    align-items: center;
+}
+
+.overlay-title {
+    font-size: 52px;
+    -unity-font-style: bold;
+    color: #ffffff;
+    margin-bottom: 32px;
+    -unity-text-align: middle-center;
+}

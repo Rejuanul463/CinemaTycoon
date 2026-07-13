@@ -26,7 +26,9 @@ namespace CinemaTycoon.Staff
         public IReadOnlyList<Staff> ActiveStaff => _activeStaff;
 
         public static event Action<Staff> OnStaffHired;
+#pragma warning disable CS0067 // Declared for future fire-staff feature
         public static event Action<Staff> OnStaffFired;
+#pragma warning restore CS0067
 
         public void Initialize() { }
 
