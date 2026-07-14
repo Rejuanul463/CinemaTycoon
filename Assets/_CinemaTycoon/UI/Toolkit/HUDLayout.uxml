@@ -41,20 +41,23 @@
             <ui:VisualElement name="management-panel" class="management-sidebar glass-panel">
                 <ui:Label text="MANAGEMENT" class="sidebar-title" picking-mode="Ignore" />
 
-                <ui:VisualElement class="sidebar-section">
-                    <ui:Label text="STAFF" class="section-title" picking-mode="Ignore" />
+                <!-- Category: STAFF (accordion) -->
+                <ui:Button text="▸ STAFF" name="staff-category-button" class="category-button" />
+                <ui:VisualElement name="staff-category-content" class="category-content" style="display: none;">
                     <ui:Button text="Hire Cashier ($150)" name="hire-cashier-button" class="action-button" />
                     <ui:Button text="Hire Janitor ($100)" name="hire-janitor-button" class="action-button" />
                     <ui:Button text="Hire Guard ($100)"   name="hire-guard-button"   class="action-button" />
                 </ui:VisualElement>
 
-                <ui:VisualElement class="sidebar-section">
-                    <ui:Label text="MOVIES" class="section-title" picking-mode="Ignore" />
+                <!-- Category: MOVIES (accordion) -->
+                <ui:Button text="▸ MOVIES" name="movies-category-button" class="category-button" />
+                <ui:VisualElement name="movies-category-content" class="category-content" style="display: none;">
                     <ui:VisualElement name="movie-buttons-container" />
                 </ui:VisualElement>
 
-                <ui:VisualElement class="sidebar-section">
-                    <ui:Label text="UPGRADES" class="section-title" picking-mode="Ignore" />
+                <!-- Category: UPGRADES (accordion) -->
+                <ui:Button text="▸ UPGRADES" name="upgrades-category-button" class="category-button" />
+                <ui:VisualElement name="upgrades-category-content" class="category-content" style="display: none;">
                     <ui:Button text="Premium Popcorn ($250)"    name="buy-popcorn-button"    class="action-button" />
                     <ui:Button text="Faster Cashier ($250)"     name="buy-cashier-button"    class="action-button" />
                     <ui:Button text="Comfy Seats ($250)"        name="buy-seats-button"      class="action-button" />

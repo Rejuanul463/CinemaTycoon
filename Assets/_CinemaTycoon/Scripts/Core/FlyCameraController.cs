@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace CinemaTycoon.Core
@@ -26,6 +27,14 @@ namespace CinemaTycoon.Core
         private float _rotationX;
         private float _rotationY;
         private bool _isCursorLocked = false;
+
+        /// <summary>
+        /// Raised whenever the cursor lock state changes. Argument is the new
+        /// locked state (true = locked, false = free). Subscribers (e.g. the
+        /// HUD) use this to collapse transient UI panels when the player
+        /// releases the cursor-unlock modifier (Alt).
+        /// </summary>
+        public static event Action<bool> OnCursorLockChanged;
 
         private void Start()
         {
@@ -134,6 +143,7 @@ namespace CinemaTycoon.Core
 
         private void SetCursorLockState(bool locked)
         {
+            if (_isCursorLocked == locked) return; // no-op guard so subscribers don't fire spuriously
             _isCursorLocked = locked;
             if (locked)
             {
@@ -145,6 +155,7 @@ namespace CinemaTycoon.Core
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
             }
+            OnCursorLockChanged?.Invoke(locked);
         }
     }
 }

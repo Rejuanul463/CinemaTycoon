@@ -82,6 +82,26 @@ namespace CinemaTycoon.UI
         private EventCallback<ClickEvent> _buyMarketingCallback;
         private readonly List<(Button button, EventCallback<ClickEvent> callback)> _movieButtonCallbacks = new();
 
+        // Accordion category buttons and their collapsible content panels.
+        // Only one category is open at a time; clicking the open one closes it.
+        private enum ManagementCategory { None, Staff, Movies, Upgrades }
+        private Button _staffCategoryButton;
+        private Button _moviesCategoryButton;
+        private Button _upgradesCategoryButton;
+        private VisualElement _staffCategoryContent;
+        private VisualElement _moviesCategoryContent;
+        private VisualElement _upgradesCategoryContent;
+        private EventCallback<ClickEvent> _staffCategoryCallback;
+        private EventCallback<ClickEvent> _moviesCategoryCallback;
+        private EventCallback<ClickEvent> _upgradesCategoryCallback;
+        private ManagementCategory _openCategory = ManagementCategory.None;
+        // Cached label text without the disclosure glyph, so toggling doesn't accumulate ▸/▾.
+        private const string StaffCategoryLabel   = "STAFF";
+        private const string MoviesCategoryLabel  = "MOVIES";
+        private const string UpgradesCategoryLabel = "UPGRADES";
+        private const string CategoryClosedGlyph = "\u25B8  "; // ▸
+        private const string CategoryOpenGlyph   = "\u25BE  "; // ▾
+
         // State trackers
         private bool _isGameStarted = false;
         private bool _isPaused = false;
@@ -132,6 +152,34 @@ namespace CinemaTycoon.UI
             _buySeatsButton     = _root.Q<Button>("buy-seats-button");
             _buyMarketingButton = _root.Q<Button>("buy-marketing-button");
             _movieButtonsContainer = _root.Q<VisualElement>("movie-buttons-container");
+
+            // Query Accordion Category buttons + their collapsible content panels.
+            _staffCategoryButton    = _root.Q<Button>("staff-category-button");
+            _moviesCategoryButton   = _root.Q<Button>("movies-category-button");
+            _upgradesCategoryButton = _root.Q<Button>("upgrades-category-button");
+            _staffCategoryContent    = _root.Q<VisualElement>("staff-category-content");
+            _moviesCategoryContent   = _root.Q<VisualElement>("movies-category-content");
+            _upgradesCategoryContent = _root.Q<VisualElement>("upgrades-category-content");
+
+            // Wire category-button clicks (stored delegates for proper teardown).
+            if (_staffCategoryButton != null)
+            {
+                _staffCategoryCallback = _ => ToggleCategory(ManagementCategory.Staff);
+                _staffCategoryButton.RegisterCallback<ClickEvent>(_staffCategoryCallback);
+            }
+            if (_moviesCategoryButton != null)
+            {
+                _moviesCategoryCallback = _ => ToggleCategory(ManagementCategory.Movies);
+                _moviesCategoryButton.RegisterCallback<ClickEvent>(_moviesCategoryCallback);
+            }
+            if (_upgradesCategoryButton != null)
+            {
+                _upgradesCategoryCallback = _ => ToggleCategory(ManagementCategory.Upgrades);
+                _upgradesCategoryButton.RegisterCallback<ClickEvent>(_upgradesCategoryCallback);
+            }
+
+            // Initialize all categories as collapsed.
+            ApplyCategoryState();
 
             Debug.Log($"[HUD] Button query results — " +
                       $"Cashier:{_hireCashierButton != null} " +
@@ -266,6 +314,7 @@ namespace CinemaTycoon.UI
             EventManager.OnEventResolved += HandleEventResolved;
             EventManager.OnEventExpired += HandleEventExpired;
             GameManager.OnGameOver += HandleGameOver;
+            FlyCameraController.OnCursorLockChanged += HandleCursorLockChanged;
         }
 
         private void OnDisable()
@@ -291,6 +340,14 @@ namespace CinemaTycoon.UI
                 _buySeatsButton.UnregisterCallback<ClickEvent>(_buySeatsCallback);
             if (_buyMarketingButton != null && _buyMarketingCallback != null)
                 _buyMarketingButton.UnregisterCallback<ClickEvent>(_buyMarketingCallback);
+
+            // Unregister category-button delegates.
+            if (_staffCategoryButton != null && _staffCategoryCallback != null)
+                _staffCategoryButton.UnregisterCallback<ClickEvent>(_staffCategoryCallback);
+            if (_moviesCategoryButton != null && _moviesCategoryCallback != null)
+                _moviesCategoryButton.UnregisterCallback<ClickEvent>(_moviesCategoryCallback);
+            if (_upgradesCategoryButton != null && _upgradesCategoryCallback != null)
+                _upgradesCategoryButton.UnregisterCallback<ClickEvent>(_upgradesCategoryCallback);
 
             // Unregister all dynamically created movie buttons.
             foreach (var (button, callback) in _movieButtonCallbacks)
@@ -319,6 +376,7 @@ namespace CinemaTycoon.UI
             EventManager.OnEventResolved -= HandleEventResolved;
             EventManager.OnEventExpired -= HandleEventExpired;
             GameManager.OnGameOver -= HandleGameOver;
+            FlyCameraController.OnCursorLockChanged -= HandleCursorLockChanged;
         }
 
         // (root pointer instrumentation removed)
@@ -494,6 +552,66 @@ namespace CinemaTycoon.UI
 #else
             Application.Quit();
 #endif
+        }
+
+        /// <summary>
+        /// Accordion toggle: clicking the open category closes it; clicking a
+        /// different category closes the current one and opens the new one.
+        /// </summary>
+        private void ToggleCategory(ManagementCategory category)
+        {
+            _openCategory = (_openCategory == category) ? ManagementCategory.None : category;
+            ApplyCategoryState();
+        }
+
+        /// <summary>
+        /// Collapses every category panel. Called when the cursor re-locks so
+        /// the UI returns to its resting state when the player releases Alt.
+        /// </summary>
+        private void CollapseAllCategories()
+        {
+            if (_openCategory == ManagementCategory.None) return;
+            _openCategory = ManagementCategory.None;
+            ApplyCategoryState();
+        }
+
+        /// <summary>
+        /// Subscribed to FlyCameraController.OnCursorLockChanged. When the
+        /// cursor locks (Alt released in FlyMode) any open category panel
+        /// collapses so the HUD doesn't dangle visible options behind a
+        /// locked cursor.
+        /// </summary>
+        private void HandleCursorLockChanged(bool isLocked)
+        {
+            if (isLocked) CollapseAllCategories();
+        }
+
+        /// <summary>
+        /// Pushes the current <see cref="_openCategory"/> into the UI:
+        /// shows/hides each content panel and updates the disclosure glyph
+        /// (▸/▾) + expanded styling on the category buttons.
+        /// </summary>
+        private void ApplyCategoryState()
+        {
+            SetCategoryOpen(ManagementCategory.Staff,
+                _staffCategoryButton, _staffCategoryContent, StaffCategoryLabel);
+            SetCategoryOpen(ManagementCategory.Movies,
+                _moviesCategoryButton, _moviesCategoryContent, MoviesCategoryLabel);
+            SetCategoryOpen(ManagementCategory.Upgrades,
+                _upgradesCategoryButton, _upgradesCategoryContent, UpgradesCategoryLabel);
+        }
+
+        private void SetCategoryOpen(ManagementCategory category, Button header, VisualElement content, string label)
+        {
+            bool isOpen = _openCategory == category;
+            if (content != null)
+                content.style.display = isOpen ? DisplayStyle.Flex : DisplayStyle.None;
+            if (header != null)
+            {
+                header.text = (isOpen ? CategoryOpenGlyph : CategoryClosedGlyph) + label;
+                if (isOpen) header.AddToClassList("category-button--expanded");
+                else        header.RemoveFromClassList("category-button--expanded");
+            }
         }
 
         private void PauseGame()
