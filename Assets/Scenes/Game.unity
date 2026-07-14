@@ -237,7 +237,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a7a9e824dc224692a3a8168e1dd131d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CinemaTycoon.Schedule.ScheduleManager
-  availableMovies: []
+  availableMovies:
+  - {fileID: 11400000, guid: 80d621915239a68478c0dff3ae498ba5, type: 2}
+  - {fileID: 11400000, guid: 1f0c9b45f5a2d6d4c86ce3a6388b79e5, type: 2}
+  - {fileID: 11400000, guid: 1706c2b7d6861d444950dcd89236fe9e, type: 2}
   cleanlinessThreshold: 50
   dirtyStartPenalty: 10
   decayPerSecondDuringShow: 5
@@ -594,7 +597,6 @@ MonoBehaviour:
   moveSpeed: 15
   fastMoveSpeed: 30
   lookSensitivity: 2
-  cursorToggleKey: 27
   bobAmplitude: 0.4
   bobFrequency: 0.5
   panAmplitude: 2
@@ -2419,6 +2421,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CinemaTycoon.UI.UIToolkitHUDBindings
   notificationTemplate: {fileID: 9197481963319205126, guid: ca4ab84a7bf047641bb7ef9d17a906df, type: 3}
+  hudStyleSheet: {fileID: 7433441132597879392, guid: fdbcd66e11230b94cad46f669837a4d0, type: 3}
 --- !u!114 &1502898151
 MonoBehaviour:
   m_ObjectHideFlags: 0

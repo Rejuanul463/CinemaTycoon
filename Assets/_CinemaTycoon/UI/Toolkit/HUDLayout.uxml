@@ -2,7 +2,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElementsSchema.xsd">
 
-    <ui:VisualElement class="hud-root" picking-mode="Ignore">
+    <ui:VisualElement class="hud-root" picking-mode="Position">
 
         <!-- ===================== MAIN MENU (full-screen) ===================== -->
         <ui:VisualElement name="main-menu-panel" class="menu-panel">
@@ -18,7 +18,7 @@
         </ui:VisualElement>
 
         <!-- ===================== GAMEPLAY HUD (hidden until play) ===================== -->
-        <ui:VisualElement name="gameplay-hud" class="hud-gameplay-container" picking-mode="Ignore">
+        <ui:VisualElement name="gameplay-hud" class="hud-gameplay-container" picking-mode="Position">
 
             <!-- TOP BAR -->
             <ui:VisualElement class="glass-panel top-bar">
@@ -41,19 +41,19 @@
             <ui:VisualElement name="management-panel" class="management-sidebar glass-panel">
                 <ui:Label text="MANAGEMENT" class="sidebar-title" picking-mode="Ignore" />
 
-                <ui:VisualElement class="sidebar-section" picking-mode="Ignore">
+                <ui:VisualElement class="sidebar-section">
                     <ui:Label text="STAFF" class="section-title" picking-mode="Ignore" />
                     <ui:Button text="Hire Cashier ($150)" name="hire-cashier-button" class="action-button" />
                     <ui:Button text="Hire Janitor ($100)" name="hire-janitor-button" class="action-button" />
                     <ui:Button text="Hire Guard ($100)"   name="hire-guard-button"   class="action-button" />
                 </ui:VisualElement>
 
-                <ui:VisualElement class="sidebar-section" picking-mode="Ignore">
+                <ui:VisualElement class="sidebar-section">
                     <ui:Label text="MOVIES" class="section-title" picking-mode="Ignore" />
-                    <ui:VisualElement name="movie-buttons-container" picking-mode="Ignore" />
+                    <ui:VisualElement name="movie-buttons-container" />
                 </ui:VisualElement>
 
-                <ui:VisualElement class="sidebar-section" picking-mode="Ignore">
+                <ui:VisualElement class="sidebar-section">
                     <ui:Label text="UPGRADES" class="section-title" picking-mode="Ignore" />
                     <ui:Button text="Premium Popcorn ($250)"    name="buy-popcorn-button"    class="action-button" />
                     <ui:Button text="Faster Cashier ($250)"     name="buy-cashier-button"    class="action-button" />

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.SceneManagement;
@@ -18,7 +19,10 @@ namespace CinemaTycoon.UI
         [SerializeField] private StyleSheet hudStyleSheet;
 
         private VisualElement _root;
-        
+
+        // Debug: confirm pointer events reach UI Toolkit at runtime
+        private bool _debugPointerHooked;
+
         // Main Panels
         private VisualElement _mainMenuPanel;
         private VisualElement _gameplayHud;
@@ -66,10 +70,24 @@ namespace CinemaTycoon.UI
         private VisualElement _notificationContainer;
         private Label _lastTicketLabel;
 
+        // Stored ClickEvent delegates so they can be unregistered in OnDisable.
+        // Using lambdas directly with RegisterCallback would leak subscriptions across
+        // enable/disable cycles because the delegate reference cannot be recovered.
+        private EventCallback<ClickEvent> _hireCashierCallback;
+        private EventCallback<ClickEvent> _hireJanitorCallback;
+        private EventCallback<ClickEvent> _hireGuardCallback;
+        private EventCallback<ClickEvent> _buyPopcornCallback;
+        private EventCallback<ClickEvent> _buyCashierCallback;
+        private EventCallback<ClickEvent> _buySeatsCallback;
+        private EventCallback<ClickEvent> _buyMarketingCallback;
+        private readonly List<(Button button, EventCallback<ClickEvent> callback)> _movieButtonCallbacks = new();
+
         // State trackers
         private bool _isGameStarted = false;
         private bool _isPaused = false;
         private bool _isGameOver = false;
+
+        private bool _sanityLogged;
 
         private void OnEnable()
         {
@@ -80,6 +98,10 @@ namespace CinemaTycoon.UI
                 Debug.LogError("[UIToolkitHUDBindings] Root visual element is null. Check if UIDocument is initialized.");
                 return;
             }
+
+            // Diagnostic: log what element is receiving pointer input
+            _root.RegisterCallback<PointerDownEvent>(OnRootPointerDown);
+            _root.RegisterCallback<PointerUpEvent>(OnRootPointerUp);
 
             // Apply USS stylesheet programmatically (avoids UXML <Style> tag parsing issues)
             if (hudStyleSheet != null)
@@ -102,23 +124,95 @@ namespace CinemaTycoon.UI
             if (_quitButton != null) _quitButton.clicked += HandleQuitClicked;
 
             // Query Sidebar buttons
-            _hireCashierButton = _root.Q<Button>("hire-cashier-button");
-            _hireJanitorButton = _root.Q<Button>("hire-janitor-button");
-            _hireGuardButton = _root.Q<Button>("hire-guard-button");
-            _buyPopcornButton = _root.Q<Button>("buy-popcorn-button");
-            _buyCashierButton = _root.Q<Button>("buy-cashier-button");
-            _buySeatsButton = _root.Q<Button>("buy-seats-button");
+            _hireCashierButton  = _root.Q<Button>("hire-cashier-button");
+            _hireJanitorButton  = _root.Q<Button>("hire-janitor-button");
+            _hireGuardButton    = _root.Q<Button>("hire-guard-button");
+            _buyPopcornButton   = _root.Q<Button>("buy-popcorn-button");
+            _buyCashierButton   = _root.Q<Button>("buy-cashier-button");
+            _buySeatsButton     = _root.Q<Button>("buy-seats-button");
             _buyMarketingButton = _root.Q<Button>("buy-marketing-button");
             _movieButtonsContainer = _root.Q<VisualElement>("movie-buttons-container");
 
-            // Wire Sidebar clicks
-            if (_hireCashierButton != null) _hireCashierButton.clicked += () => TryHireStaff(StaffRole.Cashier);
-            if (_hireJanitorButton != null) _hireJanitorButton.clicked += () => TryHireStaff(StaffRole.Janitor);
-            if (_hireGuardButton != null) _hireGuardButton.clicked += () => TryHireStaff(StaffRole.Guard);
-            if (_buyPopcornButton != null) _buyPopcornButton.clicked += () => TryPurchaseUpgrade(UpgradeType.PremiumPopcorn);
-            if (_buyCashierButton != null) _buyCashierButton.clicked += () => TryPurchaseUpgrade(UpgradeType.FasterCashier);
-            if (_buySeatsButton != null) _buySeatsButton.clicked += () => TryPurchaseUpgrade(UpgradeType.ComfySeats);
-            if (_buyMarketingButton != null) _buyMarketingButton.clicked += () => TryPurchaseUpgrade(UpgradeType.Marketing);
+            Debug.Log($"[HUD] Button query results — " +
+                      $"Cashier:{_hireCashierButton != null} " +
+                      $"Janitor:{_hireJanitorButton != null} " +
+                      $"Guard:{_hireGuardButton != null} " +
+                      $"Popcorn:{_buyPopcornButton != null} " +
+                      $"FastCashier:{_buyCashierButton != null} " +
+                      $"Seats:{_buySeatsButton != null} " +
+                      $"Marketing:{_buyMarketingButton != null}");
+
+            // Wire Sidebar clicks using ClickEvent (Button.clicked is unreliable in this runtime).
+            // Store each delegate so it can be Unregistered in OnDisable.
+            if (_hireCashierButton != null)
+            {
+                _hireCashierCallback = _ =>
+                {
+                    Debug.Log("[HUD] hire-cashier-button ClickEvent");
+                    TryHireStaff(StaffRole.Cashier);
+                };
+                _hireCashierButton.RegisterCallback<ClickEvent>(_hireCashierCallback);
+            }
+
+            if (_hireJanitorButton != null)
+            {
+                _hireJanitorCallback = _ =>
+                {
+                    Debug.Log("[HUD] hire-janitor-button ClickEvent");
+                    TryHireStaff(StaffRole.Janitor);
+                };
+                _hireJanitorButton.RegisterCallback<ClickEvent>(_hireJanitorCallback);
+            }
+
+            if (_hireGuardButton != null)
+            {
+                _hireGuardCallback = _ =>
+                {
+                    Debug.Log("[HUD] hire-guard-button ClickEvent");
+                    TryHireStaff(StaffRole.Guard);
+                };
+                _hireGuardButton.RegisterCallback<ClickEvent>(_hireGuardCallback);
+            }
+
+            if (_buyPopcornButton != null)
+            {
+                _buyPopcornCallback = _ =>
+                {
+                    Debug.Log("[HUD] buy-popcorn-button ClickEvent");
+                    TryPurchaseUpgrade(UpgradeType.PremiumPopcorn);
+                };
+                _buyPopcornButton.RegisterCallback<ClickEvent>(_buyPopcornCallback);
+            }
+
+            if (_buyCashierButton != null)
+            {
+                _buyCashierCallback = _ =>
+                {
+                    Debug.Log("[HUD] buy-cashier-button ClickEvent");
+                    TryPurchaseUpgrade(UpgradeType.FasterCashier);
+                };
+                _buyCashierButton.RegisterCallback<ClickEvent>(_buyCashierCallback);
+            }
+
+            if (_buySeatsButton != null)
+            {
+                _buySeatsCallback = _ =>
+                {
+                    Debug.Log("[HUD] buy-seats-button ClickEvent");
+                    TryPurchaseUpgrade(UpgradeType.ComfySeats);
+                };
+                _buySeatsButton.RegisterCallback<ClickEvent>(_buySeatsCallback);
+            }
+
+            if (_buyMarketingButton != null)
+            {
+                _buyMarketingCallback = _ =>
+                {
+                    Debug.Log("[HUD] buy-marketing-button ClickEvent");
+                    TryPurchaseUpgrade(UpgradeType.Marketing);
+                };
+                _buyMarketingButton.RegisterCallback<ClickEvent>(_buyMarketingCallback);
+            }
 
             // Query Fullscreen Overlays
             _pauseOverlay = _root.Q<VisualElement>("pause-overlay");
@@ -176,8 +270,35 @@ namespace CinemaTycoon.UI
 
         private void OnDisable()
         {
+            _root.UnregisterCallback<PointerDownEvent>(OnRootPointerDown);
+            _root.UnregisterCallback<PointerUpEvent>(OnRootPointerUp);
+
             if (_startButton != null) _startButton.clicked -= HandleStartClicked;
             if (_quitButton != null) _quitButton.clicked -= HandleQuitClicked;
+
+            // Unregister stored ClickEvent delegates on sidebar buttons.
+            if (_hireCashierButton != null && _hireCashierCallback != null)
+                _hireCashierButton.UnregisterCallback<ClickEvent>(_hireCashierCallback);
+            if (_hireJanitorButton != null && _hireJanitorCallback != null)
+                _hireJanitorButton.UnregisterCallback<ClickEvent>(_hireJanitorCallback);
+            if (_hireGuardButton != null && _hireGuardCallback != null)
+                _hireGuardButton.UnregisterCallback<ClickEvent>(_hireGuardCallback);
+            if (_buyPopcornButton != null && _buyPopcornCallback != null)
+                _buyPopcornButton.UnregisterCallback<ClickEvent>(_buyPopcornCallback);
+            if (_buyCashierButton != null && _buyCashierCallback != null)
+                _buyCashierButton.UnregisterCallback<ClickEvent>(_buyCashierCallback);
+            if (_buySeatsButton != null && _buySeatsCallback != null)
+                _buySeatsButton.UnregisterCallback<ClickEvent>(_buySeatsCallback);
+            if (_buyMarketingButton != null && _buyMarketingCallback != null)
+                _buyMarketingButton.UnregisterCallback<ClickEvent>(_buyMarketingCallback);
+
+            // Unregister all dynamically created movie buttons.
+            foreach (var (button, callback) in _movieButtonCallbacks)
+            {
+                if (button != null && callback != null)
+                    button.UnregisterCallback<ClickEvent>(callback);
+            }
+            _movieButtonCallbacks.Clear();
 
             if (_resumeButton != null) _resumeButton.clicked -= ResumeGame;
             if (_restartButton != null) _restartButton.clicked -= RestartGame;
@@ -198,6 +319,26 @@ namespace CinemaTycoon.UI
             EventManager.OnEventResolved -= HandleEventResolved;
             EventManager.OnEventExpired -= HandleEventExpired;
             GameManager.OnGameOver -= HandleGameOver;
+        }
+
+        // (root pointer instrumentation removed)
+
+        private void OnRootPointerDown(PointerDownEvent evt)
+        {
+            string target = evt.target != null ? evt.target.ToString() : "null";
+            if (evt.target is Button b)
+                Debug.Log($"[HUD] PointerDown target=Button text='{b.text}' enabledSelf={b.enabledSelf} focusable={b.focusable}");
+            else
+                Debug.Log($"[HUD] PointerDown target={target}");
+        }
+
+        private void OnRootPointerUp(PointerUpEvent evt)
+        {
+            string target = evt.target != null ? evt.target.ToString() : "null";
+            if (evt.target is Button b)
+                Debug.Log($"[HUD] PointerUp target=Button text='{b.text}' enabledSelf={b.enabledSelf} focusable={b.focusable}");
+            else
+                Debug.Log($"[HUD] PointerUp target={target}");
         }
 
         private void Start()
@@ -224,6 +365,7 @@ namespace CinemaTycoon.UI
             var gm = GameManager.Instance;
             if (gm != null)
             {
+                Debug.Log("[HUD] Start(): GameManager found; populating UI + stats.");
                 // Populate dynamic movie buttons
                 PopulateMovieButtons();
 
@@ -239,6 +381,20 @@ namespace CinemaTycoon.UI
 
         private void Update()
         {
+            if (!_sanityLogged)
+            {
+                _sanityLogged = true;
+
+                string mainMenuDisplay = _mainMenuPanel != null ? _mainMenuPanel.style.display.ToString() : "null";
+                string gameplayHudDisplay = _gameplayHud != null ? _gameplayHud.style.display.ToString() : "null";
+                string pauseDisplay = _pauseOverlay != null ? _pauseOverlay.style.display.ToString() : "null";
+                string settingsDisplay = _settingsOverlay != null ? _settingsOverlay.style.display.ToString() : "null";
+
+                Debug.Log($"[HUD] Sanity: timeScale={Time.timeScale} mainMenu={mainMenuDisplay} gameplayHud={gameplayHudDisplay} pauseOverlay={pauseDisplay} settingsOverlay={settingsDisplay}");
+                if (_hireCashierButton != null)
+                    Debug.Log($"[HUD] Sanity: hire-cashier enabledSelf={_hireCashierButton.enabledSelf} focusable={_hireCashierButton.focusable}");
+            }
+
             // Handle Pause Toggle Shortcut
             if (_isGameStarted && !_isGameOver)
             {
@@ -259,6 +415,15 @@ namespace CinemaTycoon.UI
         private void PopulateMovieButtons()
         {
             if (_movieButtonsContainer == null) return;
+
+            // Unregister and clear previously registered movie button callbacks so
+            // repeated population cycles don't accumulate stale subscriptions.
+            foreach (var (button, callback) in _movieButtonCallbacks)
+            {
+                if (button != null && callback != null)
+                    button.UnregisterCallback<ClickEvent>(callback);
+            }
+            _movieButtonCallbacks.Clear();
             _movieButtonsContainer.Clear();
 
             var gm = GameManager.Instance;
@@ -270,26 +435,30 @@ namespace CinemaTycoon.UI
 
                 var button = new Button { text = $"{movie.title} (${movie.baseTicketPrice})" };
                 button.AddToClassList("action-button");
-                button.clicked += () => TryScheduleMovie(movie);
+                EventCallback<ClickEvent> callback = _ => TryScheduleMovie(movie);
+                button.RegisterCallback<ClickEvent>(callback);
                 _movieButtonsContainer.Add(button);
+                _movieButtonCallbacks.Add((button, callback));
             }
         }
 
         private void TryHireStaff(StaffRole role)
         {
+            Debug.Log($"[HUD] TryHireStaff called for {role}");
             var gm = GameManager.Instance;
-            if (gm == null || gm.Staff == null) return;
-
-            gm.Staff.TryHire(role);
+            if (gm == null)  { Debug.LogError("[HUD] GameManager.Instance is NULL"); return; }
+            if (gm.Staff == null) { Debug.LogError("[HUD] gm.Staff is NULL"); return; }
+            bool result = gm.Staff.TryHire(role);
+            Debug.Log($"[HUD] TryHire({role}) returned {result}");
         }
 
         private void TryPurchaseUpgrade(UpgradeType type)
         {
+            Debug.Log($"[HUD] TryPurchaseUpgrade called for {type}");
             var gm = GameManager.Instance;
-            if (gm == null || gm.Economy == null) return;
-
+            if (gm == null)     { Debug.LogError("[HUD] GameManager.Instance is NULL"); return; }
+            if (gm.Economy == null) { Debug.LogError("[HUD] gm.Economy is NULL"); return; }
             gm.Economy.TryPurchaseUpgrade(type);
-            // Refresh buttons to reflect purchased status
             HandleBalanceChanged(gm.Economy.Balance);
         }
 
@@ -303,6 +472,7 @@ namespace CinemaTycoon.UI
 
         private void HandleStartClicked()
         {
+            Debug.Log("[HUD] HandleStartClicked()");
             _isGameStarted = true;
             Time.timeScale = 1f;
 
@@ -407,13 +577,16 @@ namespace CinemaTycoon.UI
 
         private void UpdateInteractivity(float balance)
         {
-            // Staff Costs fallback constants (hiring Cashier is $150, Janitor $100, Guard $100)
-            if (_hireCashierButton != null) _hireCashierButton.SetEnabled(balance >= 150f);
-            if (_hireJanitorButton != null) _hireJanitorButton.SetEnabled(balance >= 100f);
-            if (_hireGuardButton != null) _hireGuardButton.SetEnabled(balance >= 100f);
-
+            // Hire-button affordability driven by StaffRoleData.hireCost so the
+            // UI never drifts from the configured role data.
             var gm = GameManager.Instance;
-            if (gm == null || gm.Economy == null) return;
+            if (gm == null || gm.Staff == null) return;
+
+            if (_hireCashierButton != null) _hireCashierButton.SetEnabled(balance >= gm.Staff.GetHireCost(StaffRole.Cashier));
+            if (_hireJanitorButton != null) _hireJanitorButton.SetEnabled(balance >= gm.Staff.GetHireCost(StaffRole.Janitor));
+            if (_hireGuardButton != null) _hireGuardButton.SetEnabled(balance >= gm.Staff.GetHireCost(StaffRole.Guard));
+
+            if (gm.Economy == null) return;
 
             // Upgrades affordability & purchased verification
             UpdateUpgradeButton(_buyPopcornButton, UpgradeType.PremiumPopcorn, balance);

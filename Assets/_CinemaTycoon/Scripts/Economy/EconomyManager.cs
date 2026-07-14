@@ -96,7 +96,10 @@ namespace CinemaTycoon.Economy
             OnBalanceChanged?.Invoke(_balance);
 
             if (_balance <= 0f)
-                GameManager.Instance.TriggerGameOver("You went bankrupt!");
+            {
+                var gm = GameManager.Instance;
+                if (gm != null) gm.TriggerGameOver("You went bankrupt!");
+            }
         }
 
         public bool TryPurchaseUpgrade(UpgradeType type)

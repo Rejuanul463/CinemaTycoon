@@ -116,8 +116,11 @@ namespace CinemaTycoon.Events
         private void TriggerVipVisit()
         {
             // Find a non-VIP customer currently in the cinema to elevate.
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Spawner == null) return;
+
             Customer target = null;
-            foreach (var c in GameManager.Instance.Spawner.ActiveCustomers)
+            foreach (var c in gm.Spawner.ActiveCustomers)
             {
                 if (!c.IsVIP) { target = c; break; }
             }
@@ -144,15 +147,18 @@ namespace CinemaTycoon.Events
             if (evt.Resolved) return;
             evt.Resolved = true;
 
+            var gm = GameManager.Instance;
+            if (gm == null) return;
+
             if (evt.Type == GameEventType.VIPVisit && evt.RelatedVIP != null)
             {
                 float vipSat = evt.RelatedVIP.Satisfaction;
                 float delta = vipSat > 60f ? vipGoodServiceReward : -vipPoorServicePenalty;
-                GameManager.Instance.AdjustCinemaRating(delta, "VIP visit resolved");
+                gm.AdjustCinemaRating(delta, "VIP visit resolved");
             }
             else
             {
-                GameManager.Instance.AdjustCinemaRating(2f, "Spill cleaned");
+                gm.AdjustCinemaRating(2f, "Spill cleaned");
             }
 
             OnEventResolved?.Invoke(evt);
@@ -160,10 +166,13 @@ namespace CinemaTycoon.Events
 
         private void ExpireEvent(GameEvent evt)
         {
+            var gm = GameManager.Instance;
+            if (gm == null) return;
+
             if (evt.Type == GameEventType.Spill)
-                GameManager.Instance.AdjustCinemaRating(-unresolvedSpillPenalty, "Unresolved spill");
+                gm.AdjustCinemaRating(-unresolvedSpillPenalty, "Unresolved spill");
             else
-                GameManager.Instance.AdjustCinemaRating(-vipPoorServicePenalty, "VIP left unserved");
+                gm.AdjustCinemaRating(-vipPoorServicePenalty, "VIP left unserved");
 
             OnEventExpired?.Invoke(evt);
         }

@@ -92,15 +92,18 @@ namespace CinemaTycoon.Schedule
         {
             if (movie == null || _showActive) return false;
 
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Staff == null) return false;
+
             // Staffing gate: need a Cashier to sell tickets during this show.
-            if (!GameManager.Instance.Staff.HasRoleOnDuty(StaffRole.Cashier))
+            if (!gm.Staff.HasRoleOnDuty(StaffRole.Cashier))
             {
                 Debug.Log("[Schedule] Cannot start show — no Cashier on duty.");
                 return false;
             }
 
             if (_hallCleanliness < cleanlinessThreshold)
-                GameManager.Instance.AdjustCinemaRating(-dirtyStartPenalty, "Show started in dirty hall");
+                gm.AdjustCinemaRating(-dirtyStartPenalty, "Show started in dirty hall");
 
             _currentMovie = movie;
             _showActive = true;

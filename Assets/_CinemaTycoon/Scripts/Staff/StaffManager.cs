@@ -26,9 +26,7 @@ namespace CinemaTycoon.Staff
         public IReadOnlyList<Staff> ActiveStaff => _activeStaff;
 
         public static event Action<Staff> OnStaffHired;
-#pragma warning disable CS0067 // Declared for future fire-staff feature
         public static event Action<Staff> OnStaffFired;
-#pragma warning restore CS0067
 
         public void Initialize() { }
 
@@ -61,17 +59,21 @@ namespace CinemaTycoon.Staff
             }
 
             // Cashier presence gate: tell the front-of-queue customer they can advance.
-            bool cashierOnDuty = HasRoleOnDuty(StaffRole.Cashier);
-            var front = GameManager.Instance.Spawner.GetFrontOfQueue();
-            if (front != null) front.NotifyCashierReady(cashierOnDuty);
+            var gm = GameManager.Instance;
+            if (gm != null && gm.Spawner != null)
+            {
+                bool cashierOnDuty = HasRoleOnDuty(StaffRole.Cashier);
+                var front = gm.Spawner.GetFrontOfQueue();
+                if (front != null) front.NotifyCashierReady(cashierOnDuty);
+            }
 
             // Idle Janitors passively clean the hall.
             _idleCleanTimer += Time.deltaTime;
             if (_idleCleanTimer >= 1f)
             {
                 _idleCleanTimer = 0f;
-                if (HasRoleOnDuty(StaffRole.Janitor))
-                    GameManager.Instance.Schedule.CleanHall(idleCleanAmount);
+                if (HasRoleOnDuty(StaffRole.Janitor) && gm != null && gm.Schedule != null)
+                    gm.Schedule.CleanHall(idleCleanAmount);
             }
         }
 
@@ -80,17 +82,32 @@ namespace CinemaTycoon.Staff
             var cfg = GetConfig(role);
             if (cfg == null) return false;
 
-            if (!GameManager.Instance.Economy.CanAfford(cfg.hireCost))
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Economy == null) return false;
+
+            if (!gm.Economy.CanAfford(cfg.hireCost))
             {
                 Debug.Log($"[StaffManager] Cannot afford ${cfg.hireCost} to hire {role}.");
                 return false;
             }
 
-            GameManager.Instance.Economy.Spend(cfg.hireCost, $"Hire {role}");
+            gm.Economy.Spend(cfg.hireCost, $"Hire {role}");
+
+            if (staffPrefab == null)
+            {
+                Debug.LogError("[StaffManager] staffPrefab is not assigned.");
+                return false;
+            }
 
             Vector3 station = GetStationPosition(role);
             GameObject go = Instantiate(staffPrefab, station, Quaternion.identity);
             var staff = go.GetComponent<Staff>();
+            if (staff == null)
+            {
+                Debug.LogError("[StaffManager] staffPrefab is missing a Staff component.");
+                Destroy(go);
+                return false;
+            }
             staff.Initialize(role, cfg, station);
             _activeStaff.Add(staff);
             OnStaffHired?.Invoke(staff);
@@ -104,7 +121,29 @@ namespace CinemaTycoon.Staff
             return false;
         }
 
+        /// <summary>
+        /// Returns the configured hire cost for the given role, or 0 if no config
+        /// is assigned. Used by the HUD to gate hire buttons by affordability.
+        /// </summary>
+        public float GetHireCost(StaffRole role)
+        {
+            var cfg = GetConfig(role);
+            return cfg != null ? cfg.hireCost : 0f;
+        }
+
         public void EnqueueTask(StaffTask task) => _pendingTasks.Enqueue(task);
+
+        /// <summary>
+        /// Removes a staff member from the active roster, raises OnStaffFired,
+        /// and destroys the underlying GameObject. Safe to call with null.
+        /// </summary>
+        public void FireStaff(Staff staff)
+        {
+            if (staff == null) return;
+            if (!_activeStaff.Remove(staff)) return;
+            OnStaffFired?.Invoke(staff);
+            if (staff.gameObject != null) Destroy(staff.gameObject);
+        }
 
         private Staff FindNearestIdleStaff(Vector3 target)
         {
@@ -151,7 +190,11 @@ namespace CinemaTycoon.Staff
             {
                 TargetPosition = evt.Location,
                 Priority = 0,
-                OnComplete = () => GameManager.Instance.Events.ResolveEvent(evt)
+                OnComplete = () =>
+                {
+                    var gm = GameManager.Instance;
+                    if (gm != null && gm.Events != null) gm.Events.ResolveEvent(evt);
+                }
             });
         }
     }

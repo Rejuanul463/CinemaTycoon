@@ -10,9 +10,15 @@ using CinemaTycoon.Events;
 namespace CinemaTycoon.UI
 {
     /// <summary>
-    /// Central HUD plumbing. Subscribes to manager events and updates UI elements.
+    /// Legacy uGUI HUD plumbing. Subscribes to manager events and updates UI elements.
     ///
-    /// Event → HUD element mapping (the spec asks for this enumeration):
+    /// ⚠️ OBSOLETE — superseded by <see cref="UIToolkitHUDBindings"/>, which uses
+    /// UI Toolkit (UXML/USS) and covers the same events plus the pause / settings /
+    /// game-over overlays. This class is retained only as a reference and to keep
+    /// legacy prefabs compiling. Do NOT add new HUD code here; use
+    /// UIToolkitHUDBindings instead. Remove this file once no scene references it.
+    ///
+    /// Event → HUD element mapping (kept for reference):
     ///   EconomyManager.OnBalanceChanged      → balanceText
     ///   GameManager.OnCinemaRatingChanged    → ratingText + ratingSlider
     ///   ScheduleManager.OnShowStarted/Ended  → nowPlayingText
@@ -23,6 +29,7 @@ namespace CinemaTycoon.UI
     ///   EventManager.OnEventResolved/Expired → (fade-out hook)
     ///   GameManager.OnGameOver               → handled by SceneFlowManager.gameOverPanel
     /// </summary>
+    [System.Obsolete("Legacy uGUI HUD. Use CinemaTycoon.UI.UIToolkitHUDBindings (UI Toolkit) instead.")]
     public class HUDBindings : MonoBehaviour
     {
         [Header("Balance")]      [SerializeField] private Text balanceText;

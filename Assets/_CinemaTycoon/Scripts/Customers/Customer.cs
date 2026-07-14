@@ -55,9 +55,13 @@ namespace CinemaTycoon.Customers
 
         public override void Tick()
         {
+            var gm = GameManager.Instance;
+            var wp = CinemaWaypoints.Instance;
+            if (gm == null || wp == null) return;
+
             // Satisfaction drains while waiting. FasterCashier upgrade softens this.
             float patience = Customer.QueuePatiencePerSecond;
-            float cashierMult = GameManager.Instance.Economy.CashierSpeedMultiplier;
+            float cashierMult = gm.Economy != null ? gm.Economy.CashierSpeedMultiplier : 1f;
             Customer.ReduceSatisfaction(patience * Time.deltaTime / cashierMult);
 
             if (Customer.Satisfaction <= Customer.UnsatisfiedThreshold)
@@ -68,7 +72,7 @@ namespace CinemaTycoon.Customers
 
             // Re-path if our queue index changed (someone ahead left).
             Customer.Agent.SetDestination(
-                CinemaWaypoints.Instance.GetQueuePoint(Customer.QueueIndex).position);
+                wp.GetQueuePoint(Customer.QueueIndex).position);
 
             // Front of queue + cashier on duty → advance to purchase.
             if (Customer.IsAtFrontOfQueue && Customer.CashierReady)
@@ -93,7 +97,9 @@ namespace CinemaTycoon.Customers
         {
             if (Customer.Agent.pathPending || Customer.Agent.remainingDistance >= 1.0f) return;
             Customer.AttemptPurchase();
-            GoTo(GameManager.Instance.Schedule.IsMoviePlayingOrImminent
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Schedule == null) return;
+            GoTo(gm.Schedule.IsMoviePlayingOrImminent
                 ? CustomerStateType.Watching
                 : CustomerStateType.Unsatisfied);
         }
@@ -113,12 +119,15 @@ namespace CinemaTycoon.Customers
 
         public override void Tick()
         {
+            var gm = GameManager.Instance;
+            if (gm == null) return;
+
             // Gain satisfaction over the show; ComfySeats upgrade amplifies this.
-            float gain = Customer.WatchSatisfactionPerSecond
-                         * GameManager.Instance.Economy.SeatComfortMultiplier;
+            float comfort = gm.Economy != null ? gm.Economy.SeatComfortMultiplier : 1f;
+            float gain = Customer.WatchSatisfactionPerSecond * comfort;
             Customer.AddSatisfaction(gain * Time.deltaTime);
 
-            if (!GameManager.Instance.Schedule.IsMoviePlaying)
+            if (gm.Schedule == null || !gm.Schedule.IsMoviePlaying)
                 GoTo(CustomerStateType.Leaving);
         }
     }
@@ -246,12 +255,14 @@ namespace CinemaTycoon.Customers
 
         public void AttemptPurchase()
         {
-            var schedule = GameManager.Instance.Schedule;
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Schedule == null || gm.Economy == null) return;
+
+            var schedule = gm.Schedule;
             if (!schedule.IsMoviePlayingOrImminent) return; // no movie, no sale
 
-            float price = schedule.CurrentTicketPrice
-                          * GameManager.Instance.Economy.TicketRevenueMultiplier;
-            GameManager.Instance.Economy.AddIncome(price, "Ticket sale");
+            float price = schedule.CurrentTicketPrice * gm.Economy.TicketRevenueMultiplier;
+            gm.Economy.AddIncome(price, "Ticket sale");
             OnTicketPurchased?.Invoke(this, price);
         }
 
@@ -265,7 +276,8 @@ namespace CinemaTycoon.Customers
                 ? -5f * weight
                 : ((Satisfaction - 50f) / 50f) * 5f * weight; // +ve if satisfied, -ve if not
 
-            GameManager.Instance.AdjustCinemaRating(delta, "Customer feedback");
+            var gm = GameManager.Instance;
+            if (gm != null) gm.AdjustCinemaRating(delta, "Customer feedback");
             OnSatisfactionFinalized?.Invoke(this, Satisfaction);
         }
 
