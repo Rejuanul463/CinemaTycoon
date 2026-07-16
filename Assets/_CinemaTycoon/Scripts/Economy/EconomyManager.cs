@@ -66,6 +66,26 @@ namespace CinemaTycoon.Economy
         {
             _balance = startingBalance;
             OnBalanceChanged?.Invoke(_balance);
+
+            // Fallback: if no UpgradeData assets were wired in the Inspector,
+            // auto-discover them from any "Resources" folder at runtime. This
+            // lets the game ship with working upgrades without requiring the
+            // EconomyManager Inspector to reference each .asset explicitly.
+            if (availableUpgrades == null || availableUpgrades.Count == 0)
+            {
+                var loaded = Resources.LoadAll<UpgradeData>("");
+                if (loaded != null && loaded.Length > 0)
+                {
+                    availableUpgrades.AddRange(loaded);
+                    Debug.Log($"[EconomyManager] Auto-loaded {loaded.Length} UpgradeData assets from Resources.");
+                }
+                else
+                {
+                    Debug.LogWarning("[EconomyManager] No UpgradeData assets found. Upgrade buttons will be inert. " +
+                                     "Author UpgradeData assets via Create > CinemaTycoon > Upgrade, assign them to " +
+                                     "EconomyManager.availableUpgrades, or place them in a Resources folder.");
+                }
+            }
         }
 
         private void Update()
@@ -96,7 +116,10 @@ namespace CinemaTycoon.Economy
             OnBalanceChanged?.Invoke(_balance);
 
             if (_balance <= 0f)
-                GameManager.Instance.TriggerGameOver("You went bankrupt!");
+            {
+                var gm = GameManager.Instance;
+                if (gm != null) gm.TriggerGameOver("You went bankrupt!");
+            }
         }
 
         public bool TryPurchaseUpgrade(UpgradeType type)
@@ -111,6 +134,8 @@ namespace CinemaTycoon.Economy
                 OnUpgradePurchased?.Invoke(type);
                 return true;
             }
+            Debug.LogWarning($"[EconomyManager] No UpgradeData asset found for upgrade type {type}. " +
+                             $"Check that availableUpgrades contains an asset with type={type}.");
             return false;
         }
 

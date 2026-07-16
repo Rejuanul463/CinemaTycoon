@@ -29,7 +29,9 @@ namespace CinemaTycoon.Customers
             _spawnTimer += Time.deltaTime;
 
             // Marketing upgrade reduces interval (i.e., more spawns per minute).
-            float interval = spawnInterval / GameManager.Instance.Economy.MarketingMultiplier;
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Economy == null) return;
+            float interval = spawnInterval / gm.Economy.MarketingMultiplier;
 
             if (_spawnTimer >= interval && _active.Count < maxConcurrentCustomers)
             {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ui="UnityEngine.UIElements"
+    xsi:noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElementsSchema.xsd"
+>
+    <ui:VisualElement name="event-popup-root" class="notification-popup">
+        <ui:Label text="Event Title" name="event-title" class="notification-title" />
+        <ui:Label text="Event description text goes here." name="event-desc" class="notification-desc" />
+    </ui:VisualElement>
+</ui:UXML>
