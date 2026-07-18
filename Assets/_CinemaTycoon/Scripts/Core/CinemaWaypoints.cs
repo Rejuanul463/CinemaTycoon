@@ -18,6 +18,12 @@ namespace CinemaTycoon.Core
 
         [Header("Staff Stations")]
         [SerializeField] private Transform cashierStation;
+        [Tooltip("Dedicated, navmesh-reachable spot the Cashier paths to and idles at " +
+                 "while on duty. Place this NEAR the ticket booth but in an open, " +
+                 "obstacle-free area — do NOT point it at the booth transform itself " +
+                 "(the booth is often surrounded by colliders that block the agent). " +
+                 "If left unassigned, falls back to Cashier Station.")]
+        [SerializeField] private Transform cashierWorkPoint;
         [SerializeField] private Transform janitorStation;
         [SerializeField] private Transform guardStation;
 
@@ -27,6 +33,7 @@ namespace CinemaTycoon.Core
         public Transform TicketBooth => ticketBooth;
         public Transform ExitPoint => exitPoint;
         public Transform CashierStation => cashierStation;
+        public Transform CashierWorkPoint => cashierWorkPoint;
         public Transform JanitorStation => janitorStation;
         public Transform GuardStation => guardStation;
 

@@ -20,13 +20,19 @@ namespace CinemaTycoon.Staff
         private float _workTimer;
 
         // Cached Animator parameter hashes — avoids string lookups per frame.
-        private static readonly int WalkHash = Animator.StringToHash("IsWalking");
-        private static readonly int WorkHash = Animator.StringToHash("IsWorking");
+        // Names MUST match the AnimatorController parameters exactly (case-sensitive).
+        // WorkerAnimator.controller exposes "isWalking" / "isWorking" (lowercase).
+        private static readonly int WalkHash = Animator.StringToHash("isWalking");
+        private static readonly int WorkHash = Animator.StringToHash("isWorking");
 
         private void Awake()
         {
             _agent = GetComponent<NavMeshAgent>();
             _animator = GetComponent<Animator>();
+            // NavMeshAgent drives the transform position; let the animator only
+            // play clips in place. Leaving root motion on makes the agent and the
+            // animation fight for the transform (drift / sliding).
+            if (_animator != null) _animator.applyRootMotion = false;
         }
 
         public void Initialize(StaffRole role, StaffRoleData config, Vector3 station)
@@ -41,8 +47,11 @@ namespace CinemaTycoon.Staff
         {
             // Drive animator parameters from real state.
             bool moving = _agent.velocity.sqrMagnitude > 0.01f;
-            _animator.SetBool(WalkHash, moving);
-            _animator.SetBool(WorkHash, IsBusy && !moving);
+            if (_animator != null)
+            {
+                _animator.SetBool(WalkHash, moving);
+                _animator.SetBool(WorkHash, IsBusy && !moving);
+            }
 
             if (_currentTask != null && !IsBusy)
             {

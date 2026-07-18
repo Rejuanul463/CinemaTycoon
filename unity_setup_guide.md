@@ -58,6 +58,7 @@ Create an empty GameObject in the scene named `CinemaWaypoints`:
     *   **Ticket Booth**: Where the cashier stands.
     *   **Queue Points**: Position 4-6 empty GameObjects in a neat line in front of the Ticket Booth. Assign these to the `Queue Points` array in the component.
     *   **Cashier Station / Janitor Station / Guard Station**: Stations where staff sit or idle when not busy.
+    *   **Cashier Work Point**: A dedicated, navmesh-reachable spot the Cashier paths to and idles at while on duty. Place this **near** the ticket booth but in an open, obstacle-free area — do **not** point it at the booth transform itself (the booth is often surrounded by colliders that block the agent and force long detours). Customers still path to **Ticket Booth** for purchases; the cashier stands at **Cashier Work Point**. If left unassigned, the cashier falls back to **Cashier Station**.
 3.  Wire all these transforms into their corresponding slots in the `CinemaWaypoints` Inspector.
 
 > **Note:** There is no longer a `Hall Seats` array on `CinemaWaypoints`. Hall seating is now driven by the chair hierarchy discovered dynamically in **Step 5**. Customers reserve the nearest free chair at watch-time.

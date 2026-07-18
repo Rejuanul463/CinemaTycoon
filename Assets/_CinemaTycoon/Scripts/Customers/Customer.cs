@@ -231,7 +231,19 @@ namespace CinemaTycoon.Customers
         private float _sitStartTime;
         private bool _destroyed;
 
-        private void Awake() => Agent = GetComponent<NavMeshAgent>();
+        // Animator driving — matches WorkerAnimator.controller's "isWalking" param
+        // (lowercase, case-sensitive). Null-guarded so a placeholder prefab without
+        // an Animator still compiles and runs.
+        private Animator _animator;
+        private static readonly int WalkHash = Animator.StringToHash("isWalking");
+
+        private void Awake()
+        {
+            Agent = GetComponent<NavMeshAgent>();
+            _animator = GetComponent<Animator>();
+            // NavMeshAgent owns the transform; animator plays clips in place.
+            if (_animator != null) _animator.applyRootMotion = false;
+        }
 
         public void Initialize(CustomerSpawnManager spawner, bool isVIP)
         {
@@ -241,7 +253,16 @@ namespace CinemaTycoon.Customers
             ChangeState(new EnteringState(this));
         }
 
-        private void Update() => _currentState?.Tick();
+        private void Update()
+        {
+            // Drive walk animation from agent velocity (matches Staff.cs approach).
+            if (_animator != null)
+            {
+                bool moving = Agent != null && Agent.velocity.sqrMagnitude > 0.01f;
+                _animator.SetBool(WalkHash, moving);
+            }
+            _currentState?.Tick();
+        }
 
         public void ChangeState(CustomerState newState)
         {

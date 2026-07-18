@@ -72,6 +72,14 @@ namespace CinemaTycoon.Core
             }
             else if (currentState == CameraState.FlyMode)
             {
+                // Snap to the clean menu anchor pose before capturing yaw/pitch.
+                // During MainMenu the bob/pan continuously drifts transform, so
+                // reading euler from the live transform would start the fly camera
+                // wherever the bob happened to be — often looking off the placed
+                // direction. Resetting to the anchor makes FlyMode begin exactly
+                // where the menu was placed.
+                transform.position = _menuAnchorPosition;
+                transform.rotation = _menuAnchorRotation;
                 Vector3 euler = transform.eulerAngles;
                 _rotationY = euler.y;
                 _rotationX = euler.x;

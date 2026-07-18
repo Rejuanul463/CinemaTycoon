@@ -182,11 +182,21 @@ namespace CinemaTycoon.Staff
             if (wp == null) return Vector3.zero;
             return role switch
             {
-                StaffRole.Cashier => wp.CashierStation.position,
-                StaffRole.Janitor => wp.JanitorStation.position,
-                StaffRole.Guard   => wp.GuardStation.position,
+                // Cashier prefers the dedicated, reachable CashierWorkPoint (placed near
+                // the booth but off the obstacle cluster) so it doesn't fight the booth's
+                // colliders. Falls back to CashierStation if the work point is unassigned.
+                StaffRole.Cashier => ResolveCashierHome(wp),
+                StaffRole.Janitor => wp.JanitorStation != null ? wp.JanitorStation.position : Vector3.zero,
+                StaffRole.Guard   => wp.GuardStation != null ? wp.GuardStation.position : Vector3.zero,
                 _ => Vector3.zero
             };
+        }
+
+        private static Vector3 ResolveCashierHome(CinemaWaypoints wp)
+        {
+            if (wp.CashierWorkPoint != null) return wp.CashierWorkPoint.position;
+            if (wp.CashierStation != null) return wp.CashierStation.position;
+            return Vector3.zero;
         }
 
         /// <summary>
