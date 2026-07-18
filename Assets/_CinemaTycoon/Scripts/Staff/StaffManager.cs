@@ -14,7 +14,9 @@ namespace CinemaTycoon.Staff
         [SerializeField] private StaffRoleData cashierConfig;
         [SerializeField] private StaffRoleData janitorConfig;
         [SerializeField] private StaffRoleData guardConfig;
-        [SerializeField] private GameObject staffPrefab;
+        [Tooltip("List of staff prefabs. One is picked at random on each hire. " +
+                 "Every entry must have a Staff component.")]
+        [SerializeField] private GameObject[] staffPrefabs;
 
         [Header("Janitor Idle Cleaning")]
         [SerializeField] private float idleCleanAmount = 2f; // per task tick when Janitor is idle
@@ -93,18 +95,19 @@ namespace CinemaTycoon.Staff
 
             gm.Economy.Spend(cfg.hireCost, $"Hire {role}");
 
-            if (staffPrefab == null)
+            var prefab = PickStaffPrefab();
+            if (prefab == null)
             {
-                Debug.LogError("[StaffManager] staffPrefab is not assigned.");
+                Debug.LogError("[StaffManager] No staff prefab assigned to staffPrefabs.", this);
                 return false;
             }
 
             Vector3 station = GetStationPosition(role);
-            GameObject go = Instantiate(staffPrefab, station, Quaternion.identity);
+            GameObject go = Instantiate(prefab, station, Quaternion.identity);
             var staff = go.GetComponent<Staff>();
             if (staff == null)
             {
-                Debug.LogError("[StaffManager] staffPrefab is missing a Staff component.");
+                Debug.LogError($"[StaffManager] Prefab '{prefab.name}' is missing a Staff component.", prefab);
                 Destroy(go);
                 return false;
             }
@@ -112,6 +115,13 @@ namespace CinemaTycoon.Staff
             _activeStaff.Add(staff);
             OnStaffHired?.Invoke(staff);
             return true;
+        }
+
+        /// <summary>Returns a random entry from staffPrefabs, or null if the list is empty.</summary>
+        private GameObject PickStaffPrefab()
+        {
+            if (staffPrefabs == null || staffPrefabs.Length == 0) return null;
+            return staffPrefabs[UnityEngine.Random.Range(0, staffPrefabs.Length)];
         }
 
         public bool HasRoleOnDuty(StaffRole role)

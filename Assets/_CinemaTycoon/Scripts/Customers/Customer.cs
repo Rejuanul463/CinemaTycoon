@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using CinemaTycoon.Core;
 using CinemaTycoon.Economy;
+using CinemaTycoon.Schedule;
 
 namespace CinemaTycoon.Customers
 {
@@ -112,23 +113,47 @@ namespace CinemaTycoon.Customers
 
         public override void Enter()
         {
+            var handler = ChairLogicHandler.Instance;
+            if (handler == null || !handler.HasFreeChair())
+            {
+                GoTo(CustomerStateType.Unsatisfied);
+                return;
+            }
+
+            var chair = handler.ReserveNearestFree(Customer, Customer.transform.position);
+            if (chair == null)
+            {
+                GoTo(CustomerStateType.Unsatisfied);
+                return;
+            }
+
+            Customer.AssignChair(chair);
             Customer.Agent.isStopped = false;
-            Customer.Agent.SetDestination(
-                CinemaWaypoints.Instance.GetHallSeat(Customer.SeatIndex).position);
+            Customer.Agent.SetDestination(chair.GetApproachPosition());
         }
 
         public override void Tick()
         {
             var gm = GameManager.Instance;
-            if (gm == null) return;
+            if (gm?.Schedule == null) return;
 
-            // Gain satisfaction over the show; ComfySeats upgrade amplifies this.
-            float comfort = gm.Economy != null ? gm.Economy.SeatComfortMultiplier : 1f;
-            float gain = Customer.WatchSatisfactionPerSecond * comfort;
-            Customer.AddSatisfaction(gain * Time.deltaTime);
-
-            if (gm.Schedule == null || !gm.Schedule.IsMoviePlaying)
+            if (!gm.Schedule.IsMoviePlaying)
+            {
+                Customer.ReleaseReservedChair();
                 GoTo(CustomerStateType.Leaving);
+                return;
+            }
+
+            // Arrived at the reserved chair's approach point: sit down (this disables
+            // the customer GO, so Tick will not run again until the show ends and
+            // wakes the customer). hasPath guards against an off-mesh approach point
+            // (no path → remainingDistance is 0 but we must not teleport-sit).
+            if (!Customer.Agent.pathPending
+                && Customer.Agent.hasPath
+                && Customer.Agent.remainingDistance < Customer.ChairArrivalDistance)
+            {
+                Customer.SitOnChair();
+            }
         }
     }
 
@@ -180,16 +205,17 @@ namespace CinemaTycoon.Customers
         [SerializeField] private float queuePatiencePerSecond = 1.5f;
         [SerializeField] private float watchSatisfactionPerSecond = 1.5f;
         [SerializeField] private float unsatisfiedThreshold = 20f;
+        [SerializeField] private float chairArrivalDistance = 0.8f;
 
         // Read access for state classes
         public float QueuePatiencePerSecond => queuePatiencePerSecond;
         public float WatchSatisfactionPerSecond => watchSatisfactionPerSecond;
         public float UnsatisfiedThreshold => unsatisfiedThreshold;
+        public float ChairArrivalDistance => chairArrivalDistance;
         public NavMeshAgent Agent { get; private set; }
         public float Satisfaction { get; private set; }
         public bool IsVIP { get; private set; }
         public int QueueIndex { get; private set; } = -1;
-        public int SeatIndex { get; private set; } = -1;
         public bool IsAtFrontOfQueue { get; private set; }
         public bool CashierReady { get; private set; }
 
@@ -201,14 +227,16 @@ namespace CinemaTycoon.Customers
         private CustomerState _currentState;
         private CustomerSpawnManager _spawner;
         private bool _finalized;
+        private OccupiedChairLogic _reservedChair;
+        private float _sitStartTime;
+        private bool _destroyed;
 
         private void Awake() => Agent = GetComponent<NavMeshAgent>();
 
-        public void Initialize(CustomerSpawnManager spawner, bool isVIP, int seatIndex)
+        public void Initialize(CustomerSpawnManager spawner, bool isVIP)
         {
             _spawner = spawner;
             IsVIP = isVIP;
-            SeatIndex = seatIndex;
             Satisfaction = initialSatisfaction;
             ChangeState(new EnteringState(this));
         }
@@ -284,11 +312,61 @@ namespace CinemaTycoon.Customers
         /// <summary>Used by EventManager to elevate a normal customer to VIP mid-visit.</summary>
         public void MarkAsVIP() => IsVIP = true;
 
+        public void AssignChair(OccupiedChairLogic chair) => _reservedChair = chair;
+
+        public void ReleaseReservedChair()
+        {
+            if (_reservedChair == null) return;
+            _reservedChair.Release();
+            _reservedChair = null;
+        }
+
+        public void SitOnChair()
+        {
+            if (_reservedChair == null) return;
+            _sitStartTime = Time.time;
+            _reservedChair.OccupyChair();
+            ScheduleManager.OnShowEnded += HandleShowEndedWhileSitting;
+            gameObject.SetActive(false);
+        }
+
+        private void HandleShowEndedWhileSitting(MovieData m)
+        {
+            if (_destroyed) return;
+            WakeFromChair();
+        }
+
+        public void WakeFromChair()
+        {
+            ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
+
+            float elapsed = Time.time - _sitStartTime;
+            var gm = GameManager.Instance;
+            float comfort = gm?.Economy?.SeatComfortMultiplier ?? 1f;
+            AddSatisfaction(WatchSatisfactionPerSecond * elapsed * comfort);
+
+            if (_reservedChair != null)
+            {
+                _reservedChair.UnOccupyChair();
+                _reservedChair.Release();
+                _reservedChair = null;
+            }
+
+            gameObject.SetActive(true);
+            RequestTransition(CustomerStateType.Leaving);
+        }
+
         public void Despawn()
         {
             OnDespawned?.Invoke(this);
             _spawner.NotifyDespawn(this);
             Destroy(gameObject);
+        }
+
+        private void OnDestroy()
+        {
+            _destroyed = true;
+            ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
         }
     }
 }

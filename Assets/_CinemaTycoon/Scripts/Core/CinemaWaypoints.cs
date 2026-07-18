@@ -14,7 +14,6 @@ namespace CinemaTycoon.Core
         [SerializeField] private Transform spawnPoint;
         [SerializeField] private Transform[] queuePoints;
         [SerializeField] private Transform ticketBooth;
-        [SerializeField] private Transform[] hallSeats;
         [SerializeField] private Transform exitPoint;
 
         [Header("Staff Stations")]
@@ -32,18 +31,11 @@ namespace CinemaTycoon.Core
         public Transform GuardStation => guardStation;
 
         public int QueueCapacity => queuePoints != null ? queuePoints.Length : 0;
-        public int SeatCount => hallSeats != null ? hallSeats.Length : 0;
 
         public Transform GetQueuePoint(int index)
         {
             if (queuePoints == null || queuePoints.Length == 0) return ticketBooth;
             return queuePoints[Mathf.Clamp(index, 0, queuePoints.Length - 1)];
-        }
-
-        public Transform GetHallSeat(int index)
-        {
-            if (hallSeats == null || hallSeats.Length == 0) return exitPoint;
-            return hallSeats[index % hallSeats.Length];
         }
     }
 }

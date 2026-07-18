@@ -8,14 +8,15 @@ namespace CinemaTycoon.Customers
     public class CustomerSpawnManager : MonoBehaviour
     {
         [Header("Spawn Settings")]
-        [SerializeField] private GameObject customerPrefab;
+        [Tooltip("List of customer prefabs. One is picked at random on each spawn. " +
+                 "Every entry must have a Customer component.")]
+        [SerializeField] private GameObject[] customerPrefabs;
         [SerializeField] private float spawnInterval = 4f;
         [SerializeField] private int maxConcurrentCustomers = 12;
         [SerializeField] [Range(0f, 1f)] private float vipChance = 0.08f;
 
         private readonly List<Customer> _queue = new();
         private readonly HashSet<Customer> _active = new();
-        private int _seatCursor;
         private float _spawnTimer;
 
         public IReadOnlyCollection<Customer> ActiveCustomers => _active;
@@ -42,22 +43,30 @@ namespace CinemaTycoon.Customers
 
         private void SpawnCustomer()
         {
-            if (customerPrefab == null || CinemaWaypoints.Instance == null) return;
+            var prefab = PickCustomerPrefab();
+            if (prefab == null || CinemaWaypoints.Instance == null) return;
 
             Vector3 pos = CinemaWaypoints.Instance.SpawnPoint.position;
-            GameObject go = Instantiate(customerPrefab, pos, Quaternion.identity);
+            GameObject go = Instantiate(prefab, pos, Quaternion.identity);
             var cust = go.GetComponent<Customer>();
             if (cust == null)
             {
-                Debug.LogError("[CustomerSpawnManager] Prefab missing Customer component.");
+                Debug.LogError($"[CustomerSpawnManager] Prefab '{prefab.name}' missing Customer component.", prefab);
                 Destroy(go);
                 return;
             }
 
             bool isVIP = UnityEngine.Random.value < vipChance;
-            cust.Initialize(this, isVIP, _seatCursor++);
+            cust.Initialize(this, isVIP);
             _active.Add(cust);
             OnCustomerSpawned?.Invoke(cust);
+        }
+
+        /// <summary>Returns a random entry from customerPrefabs, or null if the list is empty.</summary>
+        private GameObject PickCustomerPrefab()
+        {
+            if (customerPrefabs == null || customerPrefabs.Length == 0) return null;
+            return customerPrefabs[UnityEngine.Random.Range(0, customerPrefabs.Length)];
         }
 
         public void NotifyDespawn(Customer c) => _active.Remove(c);

@@ -36,13 +36,19 @@ namespace CinemaTycoon.Core
         /// </summary>
         public static event Action<bool> OnCursorLockChanged;
 
-        private void Start()
+        private void Awake()
         {
-            // Capture the initial position as the main menu anchor
+            // Capture the initial (scene-placed) position/rotation as the main menu
+            // anchor NOW, in Awake, so any other component's Start that calls
+            // SetState(MainMenu) reads a valid anchor instead of Vector3.zero
+            // (which would teleport the camera to world origin).
             _menuAnchorPosition = transform.position;
             _menuAnchorRotation = transform.rotation;
+        }
 
-            // Apply starting state
+        private void Start()
+        {
+            // Apply starting state (anchor already captured in Awake).
             SetState(currentState);
         }
 

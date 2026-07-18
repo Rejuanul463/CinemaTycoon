@@ -1929,6 +1929,9 @@ GameObject:
   m_Component:
   - component: {fileID: 4792760536286662}
   - component: {fileID: 95212195555453550}
+  - component: {fileID: -4755088240552024481}
+  - component: {fileID: -5945182491274859548}
+  - component: {fileID: -8437201806890291439}
   m_Layer: 0
   m_Name: Character_Male_Police
   m_TagString: Untagged
@@ -1983,6 +1986,58 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!195 &-4755088240552024481
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1581182825111960}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
+--- !u!114 &-5945182491274859548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1581182825111960}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db450a98e73c74a19be7244c29757b0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CinemaTycoon.Customers.Customer
+  initialSatisfaction: 80
+  queuePatiencePerSecond: 1.5
+  watchSatisfactionPerSecond: 1.5
+  unsatisfiedThreshold: 20
+  chairArrivalDistance: 0.8
+--- !u!114 &-8437201806890291439
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1581182825111960}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9577a32d77a114234b410eaf613f26ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CinemaTycoon.Staff.Staff
+  workSpeed: 1
 --- !u!1 &1630652441913344
 GameObject:
   m_ObjectHideFlags: 0
