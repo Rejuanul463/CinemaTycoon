@@ -1,5 +1,7 @@
 using System;
+using System.Diagnostics;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace CinemaTycoon.Core
 {
@@ -134,6 +136,7 @@ namespace CinemaTycoon.Core
                 _rotationX = Mathf.Clamp(_rotationX, -85f, 85f); // prevent flipping
 
                 transform.rotation = Quaternion.Euler(_rotationX, _rotationY, 0f);
+                Debug.Log("Mouse X: " + _rotationX);
             }
 
             // Movement controls (Keyboard input works even if cursor is unlocked, but usually disabled for convenience)
