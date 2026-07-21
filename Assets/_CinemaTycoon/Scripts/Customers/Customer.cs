@@ -8,7 +8,7 @@ using CinemaTycoon.Schedule;
 namespace CinemaTycoon.Customers
 {
     public enum CustomerStateType
-    { Entering, Queuing, Purchasing, Watching, Leaving, Unsatisfied }
+    { Entering, Queuing, Purchasing, Popcorn, Watching, Leaving, Unsatisfied }
 
     // ---------- State base + concretes ----------
 
@@ -100,9 +100,55 @@ namespace CinemaTycoon.Customers
             Customer.AttemptPurchase();
             var gm = GameManager.Instance;
             if (gm == null || gm.Schedule == null) return;
-            GoTo(gm.Schedule.IsMoviePlayingOrImminent
-                ? CustomerStateType.Watching
-                : CustomerStateType.Unsatisfied);
+
+            // No movie → no point buying popcorn. Bail out as unsatisfied.
+            if (!gm.Schedule.IsMoviePlayingOrImminent)
+            {
+                GoTo(CustomerStateType.Unsatisfied);
+                return;
+            }
+
+            // Self-serve popcorn detour after the ticket purchase. If the
+            // PopcornStand waypoint is unassigned or this customer declines,
+            // skip straight to Watching.
+            if (Customer.WantsPopcorn() && CinemaWaypoints.Instance.PopcornStand != null)
+                GoTo(CustomerStateType.Popcorn);
+            else
+                GoTo(CustomerStateType.Watching);
+        }
+    }
+
+    /// <summary>
+    /// Optional detour state: customer walks from the ticket booth to the
+    /// popcorn stand, "buys" popcorn (instant AddIncome + state flag), and
+    /// then continues to the chair. Skipped when the stand is unassigned or
+    /// the customer declined (see <see cref="Customer.WantsPopcorn"/>).
+    /// </summary>
+    public sealed class PopcornState : CustomerState
+    {
+        public override CustomerStateType Type => CustomerStateType.Popcorn;
+        public PopcornState(Customer c) : base(c) { }
+
+        public override void Enter()
+        {
+            var wp = CinemaWaypoints.Instance;
+            if (wp == null || wp.PopcornStand == null)
+            {
+                // Defensive: PurchasingState already gates on this, but if a
+                // designer wires the state in manually we still bail safely.
+                GoTo(CustomerStateType.Watching);
+                return;
+            }
+
+            Customer.Agent.isStopped = false;
+            Customer.Agent.SetDestination(wp.PopcornStand.position);
+        }
+
+        public override void Tick()
+        {
+            if (Customer.Agent.pathPending || Customer.Agent.remainingDistance >= 1.0f) return;
+            Customer.AttemptPopcornPurchase();
+            GoTo(CustomerStateType.Watching);
         }
     }
 
@@ -207,6 +253,13 @@ namespace CinemaTycoon.Customers
         [SerializeField] private float unsatisfiedThreshold = 20f;
         [SerializeField] private float chairArrivalDistance = 0.8f;
 
+        [Header("Popcorn")]
+        [Tooltip("Base price of one popcorn sale, before the PremiumPopcorn multiplier.")]
+        [SerializeField] private float popcornBasePrice = 5f;
+        [Tooltip("Base chance (0..1) that a customer will detour to the popcorn stand " +
+                 "after buying a ticket. PremiumPopcorn multiplies this.")]
+        [SerializeField, Range(0f, 1f)] private float popcornBaseChance = 0.4f;
+
         // Read access for state classes
         public float QueuePatiencePerSecond => queuePatiencePerSecond;
         public float WatchSatisfactionPerSecond => watchSatisfactionPerSecond;
@@ -218,9 +271,12 @@ namespace CinemaTycoon.Customers
         public int QueueIndex { get; private set; } = -1;
         public bool IsAtFrontOfQueue { get; private set; }
         public bool CashierReady { get; private set; }
+        /// <summary>True if this customer has purchased popcorn at the stand.</summary>
+        public bool HasPopcorn { get; private set; }
 
         // Static events — EconomyManager and HUD both listen to OnTicketPurchased.
         public static event Action<Customer, float> OnTicketPurchased;
+        public static event Action<Customer, float> OnPopcornPurchased;
         public static event Action<Customer, float> OnSatisfactionFinalized;
         public static event Action<Customer> OnDespawned;
 
@@ -279,6 +335,7 @@ namespace CinemaTycoon.Customers
                 CustomerStateType.Entering    => new EnteringState(this),
                 CustomerStateType.Queuing     => new QueuingState(this),
                 CustomerStateType.Purchasing  => new PurchasingState(this),
+                CustomerStateType.Popcorn     => new PopcornState(this),
                 CustomerStateType.Watching    => new WatchingState(this),
                 CustomerStateType.Leaving     => new LeavingState(this),
                 CustomerStateType.Unsatisfied => new UnsatisfiedState(this),
@@ -313,6 +370,38 @@ namespace CinemaTycoon.Customers
             float price = schedule.CurrentTicketPrice * gm.Economy.TicketRevenueMultiplier;
             gm.Economy.AddIncome(price, "Ticket sale");
             OnTicketPurchased?.Invoke(this, price);
+        }
+
+        /// <summary>
+        /// Roll whether this customer will detour to the popcorn stand after the
+        /// ticket purchase. Result is influenced by the PremiumPopcorn upgrade:
+        /// the upgrade's multiplier (>1) raises the base chance proportionally.
+        /// Capped at 1f so a high upgrade doesn't make every customer buy.
+        /// </summary>
+        public bool WantsPopcorn()
+        {
+            if (HasPopcorn) return false;
+            var gm = GameManager.Instance;
+            float mult = gm?.Economy != null ? gm.Economy.PopcornChanceMultiplier : 1f;
+            return UnityEngine.Random.value < Mathf.Clamp01(popcornBaseChance * mult);
+        }
+
+        /// <summary>
+        /// Resolve a popcorn purchase: charge the player via EconomyManager, raise
+        /// the OnPopcornPurchased event (so the HUD can flash a "+$5 popcorn" line),
+        /// and set <see cref="HasPopcorn"/> so the customer visually represents the
+        /// purchase (callers can parent a popcorn prefab here if desired).
+        /// </summary>
+        public void AttemptPopcornPurchase()
+        {
+            if (HasPopcorn) return;
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Economy == null) return;
+
+            float price = popcornBasePrice * gm.Economy.PopcornRevenueMultiplier;
+            gm.Economy.AddIncome(price, "Popcorn sale");
+            HasPopcorn = true;
+            OnPopcornPurchased?.Invoke(this, price);
         }
 
         public void FinalizeSatisfaction(bool penalty)

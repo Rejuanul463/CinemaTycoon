@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ccdb04cd3eaaa48ce8b22d68606dd619, type: 3}
   m_Name: HorrorMovie
   m_EditorClassIdentifier: Assembly-CSharp::CinemaTycoon.Schedule.MovieData
-  title: New Movie
+  title: Dip The Last Prompter
   description: 
   genre: 3
   duration: 60

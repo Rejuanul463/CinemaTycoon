@@ -14,6 +14,9 @@ namespace CinemaTycoon.Core
         [SerializeField] private Transform spawnPoint;
         [SerializeField] private Transform[] queuePoints;
         [SerializeField] private Transform ticketBooth;
+        [Tooltip("Where customers go to buy popcorn/drinks after getting a ticket. " +
+                 "Leave unassigned to skip the popcorn state entirely.")]
+        [SerializeField] private Transform popcornStand;
         [SerializeField] private Transform exitPoint;
 
         [Header("Staff Stations")]
@@ -31,6 +34,7 @@ namespace CinemaTycoon.Core
 
         public Transform SpawnPoint => spawnPoint;
         public Transform TicketBooth => ticketBooth;
+        public Transform PopcornStand => popcornStand;
         public Transform ExitPoint => exitPoint;
         public Transform CashierStation => cashierStation;
         public Transform CashierWorkPoint => cashierWorkPoint;

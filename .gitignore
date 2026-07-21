@@ -77,3 +77,4 @@ crashlytics-build.properties
 /.kimchi
 initial_prompt.md
 CODEBASE_STATUS.md
+/graphify-out

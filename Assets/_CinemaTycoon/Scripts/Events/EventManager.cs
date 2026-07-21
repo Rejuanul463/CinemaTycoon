@@ -19,6 +19,14 @@ namespace CinemaTycoon.Events
         public Customer RelatedVIP;
         public bool Resolved;
 
+        /// <summary>
+        /// Optional visual proxy. For Spill events, this is the SpillDecal instance
+        /// sitting on the floor; the EventManager destroys it when the event is
+        /// resolved (janitor cleaned) or expires (timer ran out). Null for events
+        /// without a physical representation (e.g. VIPVisit).
+        /// </summary>
+        public GameObject PhysicalDecal;
+
         public float Progress => 1f - Mathf.Clamp01(RemainingTime / Mathf.Max(0.001f, TotalDuration));
     }
 
@@ -32,6 +40,15 @@ namespace CinemaTycoon.Events
         [SerializeField] private float spillDuration = 30f;
         [SerializeField] private float unresolvedSpillPenalty = 15f;
         [SerializeField] private Transform[] possibleSpillLocations;
+        [Tooltip("Prefab spawned on the floor when a Spill triggers. Should have a " +
+                 "flat quad mesh, a dirt/soda material, and the SpillDecal component " +
+                 "(which handles the fade-in / fade-out). Optional — leaving it null " +
+                 "just makes spills invisible, the gameplay loop still works.")]
+        [SerializeField] private GameObject spillDecalPrefab;
+        [Tooltip("Vertical offset added to the spill location when instantiating the " +
+                 "decal. Prevents z-fighting with the floor when the location is " +
+                 "exactly on the ground plane.")]
+        [SerializeField] private float spillDecalHeightOffset = 0.01f;
 
         [Header("VIP")]
         [SerializeField] private float vipServiceWindow = 60f;
@@ -84,6 +101,7 @@ namespace CinemaTycoon.Events
 
         private void TriggerRandomEvent()
         {
+            // settoig nthe new state based on the current state
             GameEventType type = UnityEngine.Random.value < spillWeight
                 ? GameEventType.Spill
                 : GameEventType.VIPVisit;
@@ -109,6 +127,18 @@ namespace CinemaTycoon.Events
                 RemainingTime = spillDuration,
                 TotalDuration = spillDuration
             };
+
+            // Spawn the physical decal so the spill is visible to the player.
+            // The prefab is optional — gameplay (event timer, janitor task, rating
+            // impact) runs even if no decal was assigned. The decal component
+            // handles its own fade-in; destruction is managed by ResolveEvent /
+            // ExpireEvent (see the GameEvent.PhysicalDecal doc).
+            if (spillDecalPrefab != null)
+            {
+                Vector3 decalPos = loc + Vector3.up * spillDecalHeightOffset;
+                evt.PhysicalDecal = Instantiate(spillDecalPrefab, decalPos, Quaternion.identity);
+            }
+
             _activeEvents.Add(evt);
             OnEventTriggered?.Invoke(evt);
         }
@@ -150,6 +180,11 @@ namespace CinemaTycoon.Events
             var gm = GameManager.Instance;
             if (gm == null) return;
 
+            // Decal goes away the moment the spill is cleaned — play the
+            // fade-out animation (SpillDecal destroys itself when finished)
+            // and null the reference so the next Update tick doesn't touch it.
+            TearDownDecal(evt);
+
             if (evt.Type == GameEventType.VIPVisit && evt.RelatedVIP != null)
             {
                 float vipSat = evt.RelatedVIP.Satisfaction;
@@ -169,12 +204,36 @@ namespace CinemaTycoon.Events
             var gm = GameManager.Instance;
             if (gm == null) return;
 
+            // Janitor never came. Still tear the decal down so the floor
+            // doesn't keep a stale "wet floor" forever.
+            TearDownDecal(evt);
+
             if (evt.Type == GameEventType.Spill)
                 gm.AdjustCinemaRating(-unresolvedSpillPenalty, "Unresolved spill");
             else
                 gm.AdjustCinemaRating(-vipPoorServicePenalty, "VIP left unserved");
 
             OnEventExpired?.Invoke(evt);
+        }
+
+        /// <summary>
+        /// Fade out and destroy the event's physical decal (if any). Centralised
+        /// here so ResolveEvent and ExpireEvent behave identically and we never
+        /// leak a decal GameObject when an event ends by either path. No-op if
+        /// the event had no decal (e.g. VIPVisit, or spillDecalPrefab was null).
+        /// </summary>
+        private static void TearDownDecal(GameEvent evt)
+        {
+            if (evt?.PhysicalDecal == null) return;
+
+            // Prefer the animated fade if the SpillDecal component is present;
+            // fall back to a hard destroy so a missing component can't leak the GO.
+            if (evt.PhysicalDecal.TryGetComponent(out SpillDecal decal))
+                decal.FadeOutAndDestroy();
+            else
+                Destroy(evt.PhysicalDecal);
+
+            evt.PhysicalDecal = null;
         }
 
         /// <summary>

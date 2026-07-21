@@ -10,7 +10,7 @@ namespace CinemaTycoon.Economy
 
     public enum UpgradeType
     {
-        PremiumPopcorn, // +ticket revenue
+        PremiumPopcorn, // boosts popcorn purchase chance + popcorn revenue (also retains legacy +ticket revenue)
         FasterCashier,  // reduces queue-frustration
         ComfySeats,     // boosts watch-time satisfaction
         Marketing       // faster customer spawn rate
@@ -158,6 +158,20 @@ namespace CinemaTycoon.Economy
         public float CashierSpeedMultiplier   => GetMultiplier(UpgradeType.FasterCashier);
         public float SeatComfortMultiplier    => GetMultiplier(UpgradeType.ComfySeats);
         public float MarketingMultiplier      => GetMultiplier(UpgradeType.Marketing);
+
+        /// <summary>
+        /// Multiplier applied to a customer's base chance of buying popcorn.
+        /// Backed by PremiumPopcorn — purchasing the upgrade makes the concession
+        /// stand more attractive to customers (better menu, marketing, etc).
+        /// </summary>
+        public float PopcornChanceMultiplier => GetMultiplier(UpgradeType.PremiumPopcorn);
+
+        /// <summary>
+        /// Multiplier applied to the per-sale popcorn revenue. Also PremiumPopcorn,
+        /// so a single upgrade purchase improves both the volume and the per-sale
+        /// margin of the concession stand.
+        /// </summary>
+        public float PopcornRevenueMultiplier => GetMultiplier(UpgradeType.PremiumPopcorn);
 
         private void PayWages()
         {
