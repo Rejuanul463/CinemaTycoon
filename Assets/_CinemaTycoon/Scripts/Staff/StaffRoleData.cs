@@ -34,5 +34,11 @@ namespace CinemaTycoon.Staff
         public GameObject TargetDecal;
         public System.Action OnComplete;
         public int Priority;
+        /// <summary>
+        /// Optional role gate. When set, only idle staff whose <c>Role</c>
+        /// matches will be considered for this task; other idle staff are
+        /// ignored even if they are closer. Null = any role is acceptable.
+        /// </summary>
+        public StaffRole? RequiredRole;
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using CinemaTycoon.Core;
 using CinemaTycoon.Customers;
 
@@ -75,6 +76,26 @@ namespace CinemaTycoon.Events
         private void OnEnable()  => Customer.OnTicketPurchased += HandleTicketPurchased;
         private void OnDisable() => Customer.OnTicketPurchased -= HandleTicketPurchased;
 
+        /// <summary>
+        /// Editor-time helper: draw the configured Possible Spill Locations as
+        /// coloured spheres so the designer can see at a glance whether they're
+        /// actually on the NavMesh. Green = on mesh, red = off mesh. Helps
+        /// catch the most common "janitor never shows up" configuration bug
+        /// before runtime.
+        /// </summary>
+        private void OnDrawGizmos()
+        {
+            if (possibleSpillLocations == null) return;
+            for (int i = 0; i < possibleSpillLocations.Length; i++)
+            {
+                var t = possibleSpillLocations[i];
+                if (t == null) continue;
+                bool onMesh = NavMesh.SamplePosition(t.position, out _, 1.5f, NavMesh.AllAreas);
+                Gizmos.color = onMesh ? Color.green : Color.red;
+                Gizmos.DrawWireSphere(t.position, 0.4f);
+            }
+        }
+
         private void Update()
         {
             if (!_initialized) return;
@@ -112,11 +133,28 @@ namespace CinemaTycoon.Events
 
         private void TriggerSpill()
         {
-            Vector3 loc = possibleSpillLocations != null && possibleSpillLocations.Length > 0
+            Vector3 rawLoc = possibleSpillLocations != null && possibleSpillLocations.Length > 0
                 ? possibleSpillLocations[UnityEngine.Random.Range(0, possibleSpillLocations.Length)].position
                 : CinemaWaypoints.Instance != null
                     ? CinemaWaypoints.Instance.TicketBooth.position
                     : Vector3.zero;
+
+            // Project the raw location onto the NavMesh. Possible Spill Locations
+            // are designer-placed transforms that often sit slightly above the
+            // floor (a few cm), which is off the baked NavMesh. Without this
+            // projection the janitor's SetDestination produces no path and the
+            // cleanup task silently stalls. We snap to the nearest walkable
+            // point within a 2m radius — generous enough for designer placement
+            // imprecision, tight enough that a misconfigured location still
+            // surfaces a clear error instead of silently teleporting somewhere
+            // unrelated.
+            if (!TryProjectOntoNavMesh(rawLoc, 2f, out Vector3 loc, out string failureReason))
+            {
+                Debug.LogWarning($"[EventManager] Spill location {rawLoc} could not be projected onto the " +
+                                 $"NavMesh ({failureReason}). Spill not spawned — this is a configuration " +
+                                 $"error in 'Possible Spill Locations'.");
+                return;
+            }
 
             var evt = new GameEvent
             {
@@ -141,6 +179,28 @@ namespace CinemaTycoon.Events
 
             _activeEvents.Add(evt);
             OnEventTriggered?.Invoke(evt);
+        }
+
+        /// <summary>
+        /// Project a raw world position onto the NavMesh. The most common caller
+        /// is a designer-placed Transform (Possible Spill Location) that floats
+        /// a few centimetres above the floor and therefore sits off the baked
+        /// mesh. We snap to the nearest walkable point within the radius; if
+        /// nothing is found (caller is way off the mesh, e.g. the camera is
+        /// flying above the level) we return false with a reason so the caller
+        /// can log a useful error instead of silently spawning a stranded spill.
+        /// </summary>
+        private static bool TryProjectOntoNavMesh(Vector3 raw, float radius, out Vector3 projected, out string reason)
+        {
+            if (NavMesh.SamplePosition(raw, out NavMeshHit hit, radius, NavMesh.AllAreas))
+            {
+                projected = hit.position;
+                reason = null;
+                return true;
+            }
+            projected = raw;
+            reason = $"no walkable surface within {radius:F1}m";
+            return false;
         }
 
         private void TriggerVipVisit()
@@ -254,5 +314,51 @@ namespace CinemaTycoon.Events
 
         // Dev-only hook used by CheatManager.
         public void DevForceNextEvent() => _nextEventTime = Time.time;
+
+        /// <summary>
+        /// Dev-only hook used by CheatManager. Triggers a Spill event at a
+        /// specific world position (typically the main camera's position so
+        /// testers can validate the cleanup loop without waiting for the
+        /// random timer). Bypasses the <c>possibleSpillLocations</c> array
+        /// and projects the position onto the NavMesh — the fly camera is
+        /// usually hovering above the floor, so a raw camera position is
+        /// always off-mesh and would stall the janitor.
+        /// </summary>
+        public void DevForceSpillAt(Vector3 worldPosition)
+        {
+            if (!_initialized) Initialize();
+
+            // Project the camera (or any raw world point) onto the NavMesh so
+            // the janitor can actually reach the spill. Use a generous radius
+            // (4m) because the fly camera can be high above the floor and we
+            // want the spill to land on the lobby below the camera, not in
+            // some unrelated walkable area.
+            if (!TryProjectOntoNavMesh(worldPosition, 4f, out Vector3 loc, out string reason))
+            {
+                Debug.LogWarning($"[EventManager] DevForceSpillAt: {worldPosition} could not be projected " +
+                                 $"onto the NavMesh ({reason}). Move the camera over a walkable surface " +
+                                 $"(the lobby floor) and try again.");
+                return;
+            }
+
+            var evt = new GameEvent
+            {
+                Type = GameEventType.Spill,
+                Title = "Spill (debug)",
+                Description = "Manually triggered spill from CheatManager.",
+                Location = loc,
+                RemainingTime = spillDuration,
+                TotalDuration = spillDuration
+            };
+
+            if (spillDecalPrefab != null)
+            {
+                Vector3 decalPos = loc + Vector3.up * spillDecalHeightOffset;
+                evt.PhysicalDecal = Instantiate(spillDecalPrefab, decalPos, Quaternion.identity);
+            }
+
+            _activeEvents.Add(evt);
+            OnEventTriggered?.Invoke(evt);
+        }
     }
 }

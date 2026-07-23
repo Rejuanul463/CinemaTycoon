@@ -25,6 +25,13 @@ namespace CinemaTycoon.Staff
         // "position-only task" — otherwise a task with no decal would falsely
         // "cancel" on the first frame (TargetDecal would always be null).
         private bool _hasDecalTarget;
+        // Time.time at the last AssignTask call. Used to give the NavMeshAgent
+        // a brief grace window to compute its path before we declare the
+        // destination unreachable (pathPending → false happens within ~1 frame
+        // for reachable points; we wait 0.5s so the agent has time to fail
+        // out cleanly on unreachable ones too).
+        private float _taskAssignedAt;
+        private const float UnreachableTimeoutSeconds = 0.5f;
 
         // Cached Animator parameter hashes — avoids string lookups per frame.
         // Names MUST match the AnimatorController parameters exactly (case-sensitive).
@@ -75,9 +82,35 @@ namespace CinemaTycoon.Staff
                     return;
                 }
 
-                // Arrived at task target? Begin work.
-                if (!_agent.pathPending && _agent.remainingDistance < 1.0f)
+                // Unreachable destination: the agent has finished computing its
+                // path and has no valid path to the target. Without this guard
+                // the agent would silently "arrive" (remainingDistance == 0) at
+                // its current position and start working nowhere near the decal.
+                // We give it a short grace period first (UnreachableTimeoutSeconds)
+                // so a slow path-computation frame doesn't false-trigger.
+                if (!_agent.pathPending
+                    && !_agent.hasPath
+                    && !_agent.isStopped
+                    && Time.time - _taskAssignedAt > UnreachableTimeoutSeconds)
+                {
+                    Debug.LogWarning($"[Staff:{Role}] Cannot reach task target {_currentTask.TargetPosition} " +
+                                     $"(no NavMesh path). Returning home. " +
+                                     $"If this is a spill, make sure the 'Possible Spill Locations' " +
+                                     $"are placed on the baked NavMesh.");
+                    _currentTask = null;
+                    ReturnHome();
+                    return;
+                }
+
+                // Arrived at task target? Begin work. hasPath is critical here:
+                // a destination on the NavMesh produces a valid path, while an
+                // off-mesh one yields remainingDistance = 0 with hasPath = false.
+                if (!_agent.pathPending
+                    && _agent.hasPath
+                    && _agent.remainingDistance < 1.0f)
+                {
                     BeginWork();
+                }
             }
             else if (IsBusy)
             {
@@ -98,8 +131,13 @@ namespace CinemaTycoon.Staff
             // loop will watch for it being destroyed; if no, the task is
             // position-only and cannot be implicitly cancelled.
             _hasDecalTarget = task != null && task.TargetDecal != null;
+            // Mark when the task was assigned so the unreachable-destination
+            // check in Update can wait a grace period before declaring the
+            // path invalid (avoids false positives on the first frame).
+            _taskAssignedAt = Time.time;
             _agent.isStopped = false;
             _agent.SetDestination(task.TargetPosition);
+            Debug.Log($"[Staff:{Role}] Assigned task → {task.TargetPosition} (decal: {(task.TargetDecal != null ? task.TargetDecal.name : "<none>")})");
         }
 
         public void ReturnHome()

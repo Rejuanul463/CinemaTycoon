@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using CinemaTycoon.Core;
 using CinemaTycoon.Economy;
 using CinemaTycoon.Events;
@@ -44,11 +45,11 @@ namespace CinemaTycoon.Staff
 
         private void Update()
         {
-            // Dispatch queued tasks to nearest idle staff.
+            // Dispatch queued tasks to nearest idle staff of the required role.
             while (_pendingTasks.Count > 0)
             {
                 var task = _pendingTasks.Dequeue();
-                var candidate = FindNearestIdleStaff(task.TargetPosition);
+                var candidate = FindNearestIdleStaff(task.TargetPosition, task.RequiredRole);
                 if (candidate != null)
                 {
                     candidate.AssignTask(task);
@@ -155,13 +156,14 @@ namespace CinemaTycoon.Staff
             if (staff.gameObject != null) Destroy(staff.gameObject);
         }
 
-        private Staff FindNearestIdleStaff(Vector3 target)
+        private Staff FindNearestIdleStaff(Vector3 target, StaffRole? requiredRole = null)
         {
             Staff best = null;
             float bestDist = float.MaxValue;
             foreach (var s in _activeStaff)
             {
                 if (s.IsBusy) continue;
+                if (requiredRole.HasValue && s.Role != requiredRole.Value) continue;
                 float d = (s.transform.position - target).sqrMagnitude;
                 if (d < bestDist) { best = s; bestDist = d; }
             }
@@ -206,6 +208,25 @@ namespace CinemaTycoon.Staff
         private void HandleEventTriggered(GameEvent evt)
         {
             if (evt.Type != GameEventType.Spill) return;
+
+            // Pre-flight NavMesh check. The most common cause of "the janitor
+            // never shows up to clean the spill" is that the event's Location
+            // (or one of the random Possible Spill Locations) sits off the
+            // baked NavMesh — the agent accepts the destination, computes no
+            // path, and silently stays put. Sample the NavMesh first; if the
+            // point isn't reachable, skip the task with a clear warning
+            // pointing the designer at the offending config.
+            const float SampleRadius = 1.5f; // 1.5m tolerance — Spill Locations may float slightly off-mesh
+            if (!NavMesh.SamplePosition(evt.Location, out _, SampleRadius, NavMesh.AllAreas))
+            {
+                Debug.LogWarning($"[StaffManager] Spill at {evt.Location} is not on the NavMesh " +
+                                 $"(sample radius {SampleRadius}m). Janitor task skipped — " +
+                                 $"check that 'Possible Spill Locations' (or whatever produced this point) " +
+                                 $"are placed on a walkable surface. Spill will time out and apply its penalty.");
+                return;
+            }
+
+            Debug.Log($"[StaffManager] Spill task enqueued at {evt.Location} (decal: {(evt.PhysicalDecal != null ? evt.PhysicalDecal.name : "<none>")})");
             EnqueueTask(new StaffTask
             {
                 TargetPosition = evt.Location,
@@ -215,6 +236,9 @@ namespace CinemaTycoon.Staff
                 // a decal target are position-only and run to completion.
                 TargetDecal = evt.PhysicalDecal,
                 Priority = 0,
+                // Spill cleanup is the Janitor's job — a closer idle Cashier
+                // or Guard must not be diverted from their own station.
+                RequiredRole = StaffRole.Janitor,
                 OnComplete = () =>
                 {
                     var gm = GameManager.Instance;

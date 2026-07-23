@@ -14,7 +14,7 @@ namespace CinemaTycoon.DevTools
         [SerializeField] private float cheatMoneyAmount = 500f;
 
         private bool _showPanel;
-        private Rect _panelRect = new Rect(10, 10, 280, 200);
+        private Rect _panelRect = new Rect(10, 10, 280, 240);
 
         private void Update()
         {
@@ -34,6 +34,16 @@ namespace CinemaTycoon.DevTools
 
             GUILayout.Label($"Balance: ${gm.Economy.Balance:F0}");
             GUILayout.Label($"Rating:  {gm.CinemaRating:F1}%");
+            GUILayout.Label($"Janitors: {CountJanitors(gm)} on duty");
+
+            // Show the cleanliness trend so the user understands the bar's
+            // "fighting itself" behaviour. State is sourced from the public
+            // ScheduleManager fields, not from inspecting the bar.
+            float clean = gm.Schedule.HallCleanliness;
+            string trend = gm.Schedule.IsMoviePlaying
+                ? $"<color=#e74c3c>▼ decaying</color> (show in progress, -5/s)"
+                : $"<color=#27ae60>▲ recovering</color> (+{(CountJanitors(gm) > 0 ? "2.5" : "0.5")}/s, no show)";
+            GUILayout.Label($"Cleanliness: {clean:F0}% {trend}");
             GUILayout.Space(8);
 
             if (GUILayout.Button($"Inject ${cheatMoneyAmount:F0}"))
@@ -42,10 +52,44 @@ namespace CinemaTycoon.DevTools
             if (GUILayout.Button("Force-Max Satisfaction"))
                 gm.AdjustCinemaRating(100f - gm.CinemaRating, "Cheat: max satisfaction");
 
+            if (GUILayout.Button("Force-Max Cleanliness"))
+                gm.Schedule.CleanHall(1000f);
+
             if (GUILayout.Button("Skip to Next Event"))
                 gm.Events.DevForceNextEvent();
 
+            if (GUILayout.Button("Force Spill Here (at camera)"))
+            {
+                // Guard: if the user triggered this from the main menu or the
+                // pause overlay, Time.timeScale == 0 and the rest of the world
+                // is frozen — the spill event will be created but no one will
+                // move and the timer won't decrement. Detect that and warn
+                // loudly so the user knows to click "Start Game" / "Resume"
+                // before re-trying. The spill is still created (the EventManager
+                // runs even at timeScale 0), but it will only become visible
+                // once the game is unpaused.
+                if (Mathf.Approximately(Time.timeScale, 0f))
+                {
+                    Debug.LogWarning("[CheatManager] Time.timeScale is 0 — you appear to be in the " +
+                                     "main menu or the pause overlay. The spill was spawned but the " +
+                                     "simulation is frozen. Click 'Start Game' on the main menu (or " +
+                                     "press Escape to resume) before testing the cleanup flow.");
+                }
+                var cam = Camera.main;
+                Vector3 pos = cam != null ? cam.transform.position : Vector3.zero;
+                gm.Events.DevForceSpillAt(pos);
+            }
+
             GUI.DragWindow();
+        }
+
+        private static int CountJanitors(GameManager gm)
+        {
+            if (gm?.Staff == null) return 0;
+            int n = 0;
+            foreach (var s in gm.Staff.ActiveStaff)
+                if (s != null && s.Role == Staff.StaffRole.Janitor) n++;
+            return n;
         }
     }
 }
