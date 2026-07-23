@@ -12,7 +12,9 @@ public class Padestarian : MonoBehaviour
     bool isWalking;
     private float waitingTime;
     private float nextTime;
-    
+
+    private bool isHoldingPopcorn;
+    [SerializeField] private GameObject popcornPrefab;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -64,5 +66,23 @@ public class Padestarian : MonoBehaviour
         }
         prevState = randomIndex;
         agent.SetDestination(positions[randomIndex].transform.position);
+    }
+
+    public void HoldPopcorn()
+    {
+        if (!isHoldingPopcorn)
+        {
+            isHoldingPopcorn = true;
+            popcornPrefab.SetActive(true);
+        }
+    }
+
+    public void ReleasePopcorn()
+    {
+        if (isHoldingPopcorn)
+        {
+            isHoldingPopcorn = false;
+            popcornPrefab.SetActive(false);
+        }
     }
 }

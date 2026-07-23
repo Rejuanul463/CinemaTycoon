@@ -478,5 +478,25 @@ namespace CinemaTycoon.Customers
             _destroyed = true;
             ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
         }
+        
+        [SerializeField] private  GameObject popcornPrefab;
+        [SerializeField] private bool havePopCorn;
+    
+        public void HoldPopcorn()
+        {
+            if (havePopCorn) return;
+            
+            havePopCorn = true;
+            popcornPrefab.SetActive(true);
+        }
+
+        public void ReleasePopcorn()
+        {
+            if (!havePopCorn) return;
+            
+            
+            havePopCorn = false;
+            popcornPrefab.SetActive(false);
+        }
     }
 }
