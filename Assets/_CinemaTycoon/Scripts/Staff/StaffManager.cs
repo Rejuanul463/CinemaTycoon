@@ -209,6 +209,11 @@ namespace CinemaTycoon.Staff
             EnqueueTask(new StaffTask
             {
                 TargetPosition = evt.Location,
+                // Tie the task to the actual decal GameObject (if any). Staff
+                // then watches the reference and cancels the task if the decal
+                // is destroyed mid-walk (e.g. the spill expired). Tasks without
+                // a decal target are position-only and run to completion.
+                TargetDecal = evt.PhysicalDecal,
                 Priority = 0,
                 OnComplete = () =>
                 {
