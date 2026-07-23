@@ -22,6 +22,16 @@ namespace CinemaTycoon.Staff
     public class StaffTask
     {
         public Vector3 TargetPosition;
+        /// <summary>
+        /// Optional physical target the task is interacting with (e.g. a
+        /// <see cref="CinemaTycoon.Events.SpillDecal"/> for janitor cleanup).
+        /// When non-null, the staff member ties their work progress to the
+        /// target's lifetime: if the GameObject is destroyed before the task
+        /// completes (e.g. the spill expired), the task auto-cancels and the
+        /// staff returns home instead of playing the Work animation over empty
+        /// floor. Leave null for position-only tasks (no implicit cancel).
+        /// </summary>
+        public GameObject TargetDecal;
         public System.Action OnComplete;
         public int Priority;
     }
