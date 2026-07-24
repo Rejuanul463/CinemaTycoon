@@ -30,6 +30,16 @@ namespace CinemaTycoon.Core
         [SerializeField] private Transform janitorStation;
         [SerializeField] private Transform guardStation;
 
+        [Header("Bathrooms (one per gender — single-occupancy)")]
+        [Tooltip("Where female customers walk to and stand while using the bathroom. " +
+                 "Leave unassigned to disable the female bathroom entirely (female " +
+                 "customers will skip the bathroom detour).")]
+        [SerializeField] private Transform femaleBathroom;
+        [Tooltip("Where male customers walk to and stand while using the bathroom. " +
+                 "Leave unassigned to disable the male bathroom entirely (male " +
+                 "customers will skip the bathroom detour).")]
+        [SerializeField] private Transform maleBathroom;
+
         private void Awake() => Instance = this;
 
         public Transform SpawnPoint => spawnPoint;
@@ -40,6 +50,8 @@ namespace CinemaTycoon.Core
         public Transform CashierWorkPoint => cashierWorkPoint;
         public Transform JanitorStation => janitorStation;
         public Transform GuardStation => guardStation;
+        public Transform FemaleBathroom => femaleBathroom;
+        public Transform MaleBathroom => maleBathroom;
 
         public int QueueCapacity => queuePoints != null ? queuePoints.Length : 0;
 

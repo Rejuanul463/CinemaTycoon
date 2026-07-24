@@ -8,7 +8,11 @@ using CinemaTycoon.Schedule;
 namespace CinemaTycoon.Customers
 {
     public enum CustomerStateType
-    { Entering, Queuing, Purchasing, Popcorn, Watching, Leaving, Unsatisfied }
+    { Entering, Queuing, Purchasing, Popcorn, Watching, Leaving, Unsatisfied,
+      GoingToBathroom, UsingBathroom, ReturningFromBathroom }
+
+    /// <summary>Customer gender. Drives which bathroom waypoint they may use.</summary>
+    public enum Gender { Male, Female }
 
     // ---------- State base + concretes ----------
 
@@ -108,13 +112,21 @@ namespace CinemaTycoon.Customers
                 return;
             }
 
-            // Self-serve popcorn detour after the ticket purchase. If the
-            // PopcornStand waypoint is unassigned or this customer declines,
-            // skip straight to Watching.
+            // Popcorn detour before the bathroom: the natural order is
+            // ticket → optional popcorn → optional bathroom → seat.
             if (Customer.WantsPopcorn() && CinemaWaypoints.Instance.PopcornStand != null)
+            {
                 GoTo(CustomerStateType.Popcorn);
-            else
-                GoTo(CustomerStateType.Watching);
+                return;
+            }
+
+            // No popcorn — pre-show bathroom chance is rolled here for the
+            // "ticket only" path. The "ticket + popcorn" path is handled in
+            // PopcornState.Tick so the same chance applies to both.
+            if (Customer.NeedsBathroom() && Customer.TryGoToBathroom(fromSeat: false))
+                return; // TryGoToBathroom already transitioned the state
+
+            GoTo(CustomerStateType.Watching);
         }
     }
 
@@ -148,6 +160,14 @@ namespace CinemaTycoon.Customers
         {
             if (Customer.Agent.pathPending || Customer.Agent.remainingDistance >= 1.0f) return;
             Customer.AttemptPopcornPurchase();
+
+            // Pre-show bathroom detour for the "ticket + popcorn" path.
+            // NeedsBathroom() is a fresh roll — same chance as the ticket-only
+            // path, so a customer buying popcorn is no more or less likely to
+            // need the bathroom than one who didn't.
+            if (Customer.NeedsBathroom() && Customer.TryGoToBathroom(fromSeat: false))
+                return; // TryGoToBathroom already transitioned the state
+
             GoTo(CustomerStateType.Watching);
         }
     }
@@ -210,6 +230,10 @@ namespace CinemaTycoon.Customers
 
         public override void Enter()
         {
+            // Idempotent — releases a held bathroom slot if the customer bailed
+            // out mid-trip (show ended while walking to / using the bathroom).
+            // No-op for customers who never entered a bathroom.
+            Customer.ReleaseBathroom();
             Customer.Agent.isStopped = false;
             Customer.Agent.SetDestination(CinemaWaypoints.Instance.ExitPoint.position);
             Customer.FinalizeSatisfaction(penalty: false);
@@ -229,6 +253,8 @@ namespace CinemaTycoon.Customers
 
         public override void Enter()
         {
+            // Idempotent — same reasoning as LeavingState.Enter.
+            Customer.ReleaseBathroom();
             Customer.Agent.isStopped = false;
             Customer.Agent.SetDestination(CinemaWaypoints.Instance.ExitPoint.position);
             Customer.FinalizeSatisfaction(penalty: true);
@@ -239,6 +265,152 @@ namespace CinemaTycoon.Customers
             if (!Customer.Agent.pathPending && Customer.Agent.remainingDistance < 1.0f)
                 Customer.Despawn();
         }
+    }
+
+    // ---------- Bathroom trip ----------
+
+    /// <summary>
+    /// Walks the customer to their reserved bathroom waypoint. The reservation
+    /// was already taken in <see cref="Customer.TryGoToBathroom"/> before
+    /// entering this state, so Enter just looks up the matching bathroom
+    /// transform and dispatches the agent. Release happens at the end of the
+    /// trip (see ReturningFromBathroomState.Exit) — not here — so the slot
+    /// stays held for the entire walk + use + return.
+    /// </summary>
+    public sealed class GoingToBathroomState : CustomerState
+    {
+        public override CustomerStateType Type => CustomerStateType.GoingToBathroom;
+        public GoingToBathroomState(Customer c) : base(c) { }
+
+        public override void Enter()
+        {
+            var bm = BathroomManager.Instance;
+            if (bm == null) { GoTo(CustomerStateType.Watching); return; }
+
+            // Reservation was made before transition; look it up via the
+            // customer's gender. If the slot was lost (e.g. another script
+            // released it) fall back to the matching waypoint so the customer
+            // still walks somewhere sensible rather than standing still.
+            var wp = CinemaWaypoints.Instance;
+            Transform target = null;
+            if (Customer.Gender == Gender.Female)
+            {
+                target = wp != null ? wp.FemaleBathroom : null;
+            }
+            else
+            {
+                target = wp != null ? wp.MaleBathroom : null;
+            }
+            if (target == null)
+            {
+                // No bathroom waypoint assigned for this gender — give up the
+                // slot (if we still have it) and head to the chair.
+                Customer.ReleaseBathroom();
+                GoTo(CustomerStateType.Watching);
+                return;
+            }
+
+            Customer.Agent.isStopped = false;
+            Customer.Agent.SetDestination(target.position);
+        }
+
+        public override void Tick()
+        {
+            if (Customer.Agent.pathPending) return;
+            if (Customer.Agent.remainingDistance < 1.0f)
+            {
+                // Arrived at the bathroom. UsingBathroomState will tick down
+                // the in-bathroom timer before the customer walks back.
+                GoTo(CustomerStateType.UsingBathroom);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Customer stands at the bathroom waypoint for a fixed duration. The
+    /// NavMeshAgent stays active but the agent has no new destination, so
+    /// it idles at the bathroom. The slot is still held by the customer
+    /// for the entire duration; the next customer of the same gender
+    /// cannot enter until the slot is released by ReturningFromBathroom.
+    /// </summary>
+    public sealed class UsingBathroomState : CustomerState
+    {
+        public override CustomerStateType Type => CustomerStateType.UsingBathroom;
+        private float _timer;
+
+        public UsingBathroomState(Customer c) : base(c) { }
+
+        public override void Enter()
+        {
+            _timer = Customer.BathroomUseDuration;
+        }
+
+        public override void Tick()
+        {
+            _timer -= Time.deltaTime;
+            if (_timer <= 0f) GoTo(CustomerStateType.ReturningFromBathroom);
+        }
+    }
+
+    /// <summary>
+    /// Walks the customer back to the chair they were sitting in (if any).
+    /// The bathroom slot is released in this state's Exit so the moment the
+    /// customer physically leaves the bathroom, the next same-gender
+    /// customer can enter. If the show has ended or there is no reserved
+    /// chair, transitions to Watching (which will sit them in a fresh
+    /// chair) or Leaving as appropriate.
+    /// </summary>
+    public sealed class ReturningFromBathroomState : CustomerState
+    {
+        public override CustomerStateType Type => CustomerStateType.ReturningFromBathroom;
+        public ReturningFromBathroomState(Customer c) : base(c) { }
+
+        public override void Enter()
+        {
+            var chair = Customer.ReservedChair;
+            var gm = GameManager.Instance;
+
+            // Pre-show customers don't have a reserved chair yet — they
+            // just head to the hall like any first-time customer. If the
+            // movie has already started by the time they return they can
+            // still find a free chair via WatchingState.
+            if (chair == null)
+            {
+                GoTo(CustomerStateType.Watching);
+                return;
+            }
+
+            // Show ended while we were in the bathroom. Bail out and leave;
+            // we won't find a free chair anyway.
+            if (gm?.Schedule != null
+                && !gm.Schedule.IsMoviePlaying
+                && !gm.Schedule.IsMoviePlayingOrImminent)
+            {
+                GoTo(CustomerStateType.Leaving);
+                return;
+            }
+
+            Customer.Agent.isStopped = false;
+            Customer.Agent.SetDestination(chair.GetApproachPosition());
+        }
+
+        public override void Tick()
+        {
+            if (Customer.Agent.pathPending) return;
+
+            // Re-sit when we reach the chair's approach point. The customer
+            // re-Occupies the same chair (its reservation is still held) and
+            // re-subscribes to OnShowEnded so the show-end wake-up still
+            // fires. SitOnChair also re-disables the GameObject, so the
+            // ReturningFromBathroomState stops ticking until the next event.
+            if (Customer.Agent.remainingDistance < Customer.ChairArrivalDistance
+                && Customer.Agent.hasPath)
+            {
+                Customer.ResumeWatchingAfterBathroom();
+            }
+        }
+
+        public override void Exit() => Customer.ReleaseBathroom();
     }
 
     // ---------- Customer MonoBehaviour ----------
@@ -266,11 +438,21 @@ namespace CinemaTycoon.Customers
                  "have the prop parented work with zero inspector wiring.")]
         [SerializeField] private GameObject popcornProp;
 
+        [Header("Bathroom")]
+        [Tooltip("Seconds a customer spends inside the bathroom before heading back.")]
+        [SerializeField] private float bathroomUseDuration = 8f;
+        [Tooltip("Chance (0..1) that a customer will detour to the bathroom after " +
+                 "buying a ticket (and optional popcorn) but before sitting. " +
+                 "Rolled once per purchase — if the matching bathroom is full the " +
+                 "detour is skipped for this visit.")]
+        [SerializeField, Range(0f, 1f)] private float preShowBathroomChance = 0.15f;
+
         // Read access for state classes
         public float QueuePatiencePerSecond => queuePatiencePerSecond;
         public float WatchSatisfactionPerSecond => watchSatisfactionPerSecond;
         public float UnsatisfiedThreshold => unsatisfiedThreshold;
         public float ChairArrivalDistance => chairArrivalDistance;
+        public float BathroomUseDuration => bathroomUseDuration;
         public NavMeshAgent Agent { get; private set; }
         public float Satisfaction { get; private set; }
         public bool IsVIP { get; private set; }
@@ -279,6 +461,21 @@ namespace CinemaTycoon.Customers
         public bool CashierReady { get; private set; }
         /// <summary>True if this customer has purchased popcorn at the stand.</summary>
         public bool HasPopcorn { get; private set; }
+        /// <summary>Customer gender. Drives which bathroom waypoint they may use.</summary>
+        public Gender Gender { get; private set; }
+        /// <summary>True between <see cref="SitOnChair"/> and either
+        /// <see cref="WakeFromChair"/> or <see cref="LeaveChairForBathroom"/>.
+        /// While true, the GameObject is disabled and BathroomManager uses this
+        /// flag to decide who to roll the "need to go" check on.</summary>
+        public bool IsSeated { get; private set; }
+        /// <summary>True while the customer holds a reserved bathroom slot in
+        /// BathroomManager. Released by the ReturningFromBathroomState exit
+        /// (or earlier if the customer bails out of the bathroom trip).</summary>
+        public bool HasBathroomReserved { get; private set; }
+        /// <summary>The currently reserved chair (only non-null while seated or
+        /// during the bathroom return trip). Exposed so ReturningFromBathroom
+        /// can path back to the same chair.</summary>
+        public OccupiedChairLogic ReservedChair => _reservedChair;
 
         // Static events — EconomyManager and HUD both listen to OnTicketPurchased.
         public static event Action<Customer, float> OnTicketPurchased;
@@ -291,6 +488,16 @@ namespace CinemaTycoon.Customers
         private bool _finalized;
         private OccupiedChairLogic _reservedChair;
         private float _sitStartTime;
+        // Total seconds spent inside the bathroom during the current sit.
+        // Subtracted from the watching-elapsed time when calculating
+        // satisfaction on wake so the player isn't credited for time spent
+        // away from the screen. Reset on each new SitOnChair.
+        private float _bathroomTime;
+        // Time.time at the moment the customer left the chair for the
+        // bathroom. Used to compute the delta added to _bathroomTime when
+        // they return. Only meaningful between LeaveChairForBathroom and
+        // ResumeWatchingAfterBathroom.
+        private float _bathroomStartTime;
         private bool _destroyed;
 
         // Animator driving — matches WorkerAnimator.controller's "isWalking" param
@@ -347,6 +554,12 @@ namespace CinemaTycoon.Customers
         {
             _spawner = spawner;
             IsVIP = isVIP;
+            // Prefabs with the "Female" tag on their root use the female
+            // bathroom. Anything else is treated as male. This keeps the
+            // gender decision entirely on the asset — CustomerSpawnManager
+            // does not need a per-prefab gender list, and the same prefab
+            // set can contain both.
+            Gender = CompareTag("Female") ? Gender.Female : Gender.Male;
             Satisfaction = initialSatisfaction;
             ChangeState(new EnteringState(this));
         }
@@ -381,6 +594,9 @@ namespace CinemaTycoon.Customers
                 CustomerStateType.Watching    => new WatchingState(this),
                 CustomerStateType.Leaving     => new LeavingState(this),
                 CustomerStateType.Unsatisfied => new UnsatisfiedState(this),
+                CustomerStateType.GoingToBathroom       => new GoingToBathroomState(this),
+                CustomerStateType.UsingBathroom         => new UsingBathroomState(this),
+                CustomerStateType.ReturningFromBathroom => new ReturningFromBathroomState(this),
                 _ => _currentState
             });
         }
@@ -479,9 +695,12 @@ namespace CinemaTycoon.Customers
         public void SitOnChair()
         {
             if (_reservedChair == null) return;
+            if (IsSeated) return; // idempotent — guards against double-subscribe on re-sit
             _sitStartTime = Time.time;
+            _bathroomTime = 0f;
             _reservedChair.OccupyChair();
             ScheduleManager.OnShowEnded += HandleShowEndedWhileSitting;
+            IsSeated = true;
             gameObject.SetActive(false);
         }
 
@@ -494,8 +713,12 @@ namespace CinemaTycoon.Customers
         public void WakeFromChair()
         {
             ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
+            IsSeated = false;
 
-            float elapsed = Time.time - _sitStartTime;
+            // Subtract any time the customer spent in the bathroom — they
+            // weren't watching the screen during those seconds, so the
+            // satisfaction award should only reflect actual screen time.
+            float elapsed = Time.time - _sitStartTime - _bathroomTime;
             var gm = GameManager.Instance;
             float comfort = gm?.Economy?.SeatComfortMultiplier ?? 1f;
             AddSatisfaction(WatchSatisfactionPerSecond * elapsed * comfort);
@@ -522,6 +745,102 @@ namespace CinemaTycoon.Customers
         {
             _destroyed = true;
             ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
+            // Safety net: if the customer is destroyed mid-bathroom-trip
+            // (scene reload, GameManager teardown) we still want to free
+            // the slot. Release is idempotent.
+            ReleaseBathroom();
+        }
+
+        // ---------- Bathroom trip helpers ----------
+
+        /// <summary>
+        /// Roll whether this customer will need the bathroom before sitting
+        /// down. Called once per purchase (either the ticket-only path in
+        /// PurchasingState or the ticket+popcorn path in PopcornState). If
+        /// the matching bathroom is full the FSM still transitions to
+        /// Watching — the bathroom detour is silently skipped.
+        /// </summary>
+        public bool NeedsBathroom()
+        {
+            return UnityEngine.Random.value < preShowBathroomChance;
+        }
+
+        /// <summary>
+        /// Try to start a bathroom trip. From-seat trips wake the customer
+        /// from the chair (un-reserving the show-end subscription, hiding
+        /// the sitting model). Pre-show trips are no-ops for the chair. If
+        /// the matching bathroom is full or no waypoint is assigned, the
+        /// call is a no-op and returns false so the caller can proceed
+        /// with its normal flow (Watching / seat assignment).
+        /// </summary>
+        public bool TryGoToBathroom(bool fromSeat)
+        {
+            if (fromSeat && !LeaveChairForBathroom()) return false;
+
+            var bm = BathroomManager.Instance;
+            if (bm == null || !bm.TryReserve(this, out _))
+            {
+                // Slot taken or no waypoint — undo any chair-wake and bail.
+                if (fromSeat) SitOnChair();
+                return false;
+            }
+
+            HasBathroomReserved = true;
+            ChangeState(new GoingToBathroomState(this));
+            return true;
+        }
+
+        /// <summary>
+        /// Release the held bathroom slot. Idempotent — called from many
+        /// places (ReturningFromBathroomState.Exit, LeavingState.Enter,
+        /// UnsatisfiedState.Enter, OnDestroy) and is safe to call when
+        /// no slot is held.
+        /// </summary>
+        public void ReleaseBathroom()
+        {
+            if (!HasBathroomReserved) return;
+            HasBathroomReserved = false;
+            BathroomManager.Instance?.Release(this);
+        }
+
+        /// <summary>
+        /// Mid-show helper: wake the customer from the chair so they can
+        /// walk to the bathroom. Hides the sitting model, unsubscribes
+        /// from the show-end event (so they don't get a double-wake), and
+        /// records the time the trip started so satisfaction on the final
+        /// wake can subtract the bathroom duration. The chair reservation
+        /// is preserved — the same chair will be reclaimed on return.
+        /// </summary>
+        public bool LeaveChairForBathroom()
+        {
+            if (!IsSeated) return false;
+            if (_reservedChair == null) return false;
+
+            ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
+            _reservedChair.UnOccupyChair(); // hide the sitting child
+            IsSeated = false;
+            _bathroomStartTime = Time.time;
+            gameObject.SetActive(true);
+            return true;
+        }
+
+        /// <summary>
+        /// Re-sit on the same chair after a bathroom trip. Re-occupies
+        /// the model, re-subscribes to OnShowEnded, accumulates the
+        /// bathroom duration into <see cref="_bathroomTime"/> so the
+        /// final satisfaction award excludes it, and re-disables the
+        /// GameObject so the FSM pauses until the next event.
+        /// </summary>
+        public void ResumeWatchingAfterBathroom()
+        {
+            if (_reservedChair == null) return;
+            if (IsSeated) return; // idempotent
+
+            _bathroomTime += Time.time - _bathroomStartTime;
+            _reservedChair.OccupyChair();
+            ScheduleManager.OnShowEnded += HandleShowEndedWhileSitting;
+            IsSeated = true;
+            gameObject.SetActive(false);
         }
 
         // True while the customer is visually holding their popcorn. Drives the

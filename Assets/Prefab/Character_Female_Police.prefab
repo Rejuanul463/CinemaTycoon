@@ -2061,7 +2061,7 @@ GameObject:
   - component: {fileID: -5217547310608862383}
   m_Layer: 0
   m_Name: Character_Female_Police
-  m_TagString: Untagged
+  m_TagString: Female
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2155,10 +2155,7 @@ MonoBehaviour:
   chairArrivalDistance: 0.8
   popcornBasePrice: 5
   popcornBaseChance: 0.4
-  popcornPropPrefab: {fileID: 3157913244217752531, guid: cbeb8ce4e5b404e5b87bb8445c917193, type: 3}
-  popcornLocalOffset: {x: 0.25, y: 1, z: 0.35}
-  popcornLocalEuler: {x: 0, y: 0, z: 0}
-  popcornLocalScale: 0.01
+  popcornProp: {fileID: 0}
 --- !u!114 &-5217547310608862383
 MonoBehaviour:
   m_ObjectHideFlags: 0
