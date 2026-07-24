@@ -259,6 +259,12 @@ namespace CinemaTycoon.Customers
         [Tooltip("Base chance (0..1) that a customer will detour to the popcorn stand " +
                  "after buying a ticket. PremiumPopcorn multiplies this.")]
         [SerializeField, Range(0f, 1f)] private float popcornBaseChance = 0.4f;
+        [Tooltip("Disabled-by-default child GameObject (e.g. FullPopcornTubM) that " +
+                 "is toggled on when the customer buys popcorn and off when they " +
+                 "leave. Leave unassigned and Awake will auto-find a child named " +
+                 "'FullPopcornTubM' (case-insensitive) so prefabs that already " +
+                 "have the prop parented work with zero inspector wiring.")]
+        [SerializeField] private GameObject popcornProp;
 
         // Read access for state classes
         public float QueuePatiencePerSecond => queuePatiencePerSecond;
@@ -292,6 +298,10 @@ namespace CinemaTycoon.Customers
         // an Animator still compiles and runs.
         private Animator _animator;
         private static readonly int WalkHash = Animator.StringToHash("isWalking");
+        // Same controller also has a Bool "isHolding" wired to the popcorn-carry
+        // clip. Keep the name aligned with the controller parameter so the
+        // transition fires when the customer picks up / drops the popcorn.
+        private static readonly int HoldHash = Animator.StringToHash("isHolding");
 
         private void Awake()
         {
@@ -299,6 +309,38 @@ namespace CinemaTycoon.Customers
             _animator = GetComponent<Animator>();
             // NavMeshAgent owns the transform; animator plays clips in place.
             if (_animator != null) _animator.applyRootMotion = false;
+
+            // Auto-resolve the popcorn prop if the inspector slot is empty.
+            // Every Character_*.prefab parents a FullPopcornTubM as a disabled
+            // child; this lets HoldPopcorn / ReleasePopcorn just toggle
+            // SetActive without per-prefab drag-and-drop.
+            if (popcornProp == null)
+                popcornProp = FindPopcornChild();
+        }
+
+        /// <summary>
+        /// Locate the popcorn prop as a child of this customer by name. Returns
+        /// null (with a one-shot warning) if nothing is found, so a missing
+        /// prop surfaces clearly in the console instead of silently no-op'ing
+        /// every popcorn purchase.
+        /// </summary>
+        private GameObject FindPopcornChild()
+        {
+            const string PropName = "FullPopcornTubM";
+            // GetComponentsInChildren includes inactive children, which matters
+            // here — the prop starts disabled in the prefab and we still want
+            // to find it so HoldPopcorn can flip it on.
+            var all = GetComponentsInChildren<Transform>(includeInactive: true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (string.Equals(all[i].name, PropName, StringComparison.OrdinalIgnoreCase))
+                    return all[i].gameObject;
+            }
+            Debug.LogWarning($"[Customer] No '{PropName}' child found under {name} and the " +
+                             $"'popcornProp' inspector slot is empty. Popcorn will be sold but no " +
+                             $"prop will appear. Either parent a '{PropName}' GameObject to this " +
+                             $"prefab or assign the slot in the inspector.");
+            return null;
         }
 
         public void Initialize(CustomerSpawnManager spawner, bool isVIP)
@@ -401,6 +443,9 @@ namespace CinemaTycoon.Customers
             float price = popcornBasePrice * gm.Economy.PopcornRevenueMultiplier;
             gm.Economy.AddIncome(price, "Popcorn sale");
             HasPopcorn = true;
+            // Drive the "isHolding" Animator parameter (UpperBody layer) so the
+            // popcorn-carry clip plays for the rest of the customer's visit.
+            HoldPopcorn();
             OnPopcornPurchased?.Invoke(this, price);
         }
 
@@ -478,25 +523,38 @@ namespace CinemaTycoon.Customers
             _destroyed = true;
             ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
         }
-        
-        [SerializeField] private  GameObject popcornPrefab;
-        [SerializeField] private bool havePopCorn;
-    
+
+        // True while the customer is visually holding their popcorn. Drives the
+        // Animator's "isHolding" Bool parameter (UpperBody layer) and gates
+        // HoldPopcorn so it's safe to call repeatedly. The prop itself is a
+        // pre-placed child GameObject toggled via SetActive, not something we
+        // instantiate at runtime.
+        private bool isHolding;
+
         public void HoldPopcorn()
         {
-            if (havePopCorn) return;
-            
-            havePopCorn = true;
-            popcornPrefab.SetActive(true);
+            if (isHolding) return;
+
+            isHolding = true;
+
+            // The prop is already a child of this customer (designer-placed
+            // and disabled in the prefab), so toggling SetActive is enough —
+            // no Instantiate / Destroy, no allocation churn, no placement to
+            // recompute at runtime.
+            if (popcornProp != null) popcornProp.SetActive(true);
+
+            if (_animator != null) _animator.SetBool(HoldHash, true);
         }
 
         public void ReleasePopcorn()
         {
-            if (!havePopCorn) return;
-            
-            
-            havePopCorn = false;
-            popcornPrefab.SetActive(false);
+            if (!isHolding) return;
+
+            isHolding = false;
+
+            if (popcornProp != null) popcornProp.SetActive(false);
+
+            if (_animator != null) _animator.SetBool(HoldHash, false);
         }
     }
 }

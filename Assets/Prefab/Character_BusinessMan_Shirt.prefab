@@ -573,8 +573,10 @@ MonoBehaviour:
   chairArrivalDistance: 0.8
   popcornBasePrice: 5
   popcornBaseChance: 0.4
-  popcornPrefab: {fileID: 5512017138871789349}
-  havePopCorn: 0
+  popcornPropPrefab: {fileID: 3157913244217752531, guid: cbeb8ce4e5b404e5b87bb8445c917193, type: 3}
+  popcornLocalOffset: {x: 0.25, y: 1, z: 0.35}
+  popcornLocalEuler: {x: 0, y: 0, z: 0}
+  popcornLocalScale: 0.01
 --- !u!114 &-4350658513740274391
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3037,11 +3039,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: cbeb8ce4e5b404e5b87bb8445c917193, type: 3}
---- !u!1 &5512017138871789349 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3157913244217752531, guid: cbeb8ce4e5b404e5b87bb8445c917193, type: 3}
-  m_PrefabInstance: {fileID: 7470828838210559222}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &8112768611167761651 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1674194669675685893, guid: cbeb8ce4e5b404e5b87bb8445c917193, type: 3}
