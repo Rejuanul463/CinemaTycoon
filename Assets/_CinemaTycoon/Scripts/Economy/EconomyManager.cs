@@ -41,9 +41,11 @@ namespace CinemaTycoon.Economy
         [Header("Starting State")]
         [SerializeField] private float startingBalance = 1000f;
 
-        [Header("Wages")]
+        [Header("Wages & Utilities")]
         [SerializeField] private float staffWagePerTick = 5f;
         [SerializeField] private float wageTickInterval = 15f;
+        [SerializeField] private float utilityCostPerTick = 40f;
+        [SerializeField] private float utilityTickInterval = 30f;
 
         [Header("Upgrades")]
         [SerializeField] private List<UpgradeData> availableUpgrades = new();
@@ -52,6 +54,7 @@ namespace CinemaTycoon.Economy
         private readonly List<Transaction> _transactions = new();
         private readonly HashSet<UpgradeType> _purchased = new();
         private float _wageTimer;
+        private float _utilityTimer;
 
         public float Balance => _balance;
         public IReadOnlyList<Transaction> Transactions => _transactions;
@@ -95,6 +98,13 @@ namespace CinemaTycoon.Economy
             {
                 _wageTimer = 0f;
                 PayWages();
+            }
+
+            _utilityTimer += Time.deltaTime;
+            if (_utilityTimer >= utilityTickInterval)
+            {
+                _utilityTimer = 0f;
+                Spend(utilityCostPerTick, "Utility & venue overhead");
             }
         }
 

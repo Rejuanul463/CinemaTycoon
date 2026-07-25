@@ -14,7 +14,7 @@ namespace CinemaTycoon.DevTools
         [SerializeField] private float cheatMoneyAmount = 500f;
 
         private bool _showPanel;
-        private Rect _panelRect = new Rect(10, 10, 280, 240);
+        private Rect _panelRect = new Rect(10, 10, 280, 320);
 
         private void Update()
         {

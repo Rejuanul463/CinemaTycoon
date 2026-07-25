@@ -55,4 +55,14 @@ public class ChairLogicHandler : MonoBehaviour
         if (best != null) best.Reserve(occupant);
         return best;
     }
+
+    /// <summary>Returns a list of all chairs currently marked dirty.</summary>
+    public List<OccupiedChairLogic> GetDirtyChairs()
+    {
+        var dirtyList = new List<OccupiedChairLogic>();
+        if (chairs == null) return dirtyList;
+        for (int i = 0; i < chairs.Count; i++)
+            if (chairs[i] != null && chairs[i].IsDirty) dirtyList.Add(chairs[i]);
+        return dirtyList;
+    }
 }

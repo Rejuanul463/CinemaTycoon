@@ -22,10 +22,11 @@ namespace CinemaTycoon.Schedule
         private float _scheduledStartTime = -1f;
         private bool _showActive;
         private float _hallCleanliness = 100f;
+        private readonly Dictionary<MovieGenre, float> _genreHype = new();
 
         public MovieData CurrentMovie => _currentMovie;
         public bool IsMoviePlaying => _showActive;
-        public float CurrentTicketPrice => _currentMovie != null ? _currentMovie.baseTicketPrice : 0f;
+        public float CurrentTicketPrice => _currentMovie != null ? _currentMovie.baseTicketPrice * GetGenreHype(_currentMovie.genre) : 0f;
         public float HallCleanliness => _hallCleanliness;
         public IReadOnlyList<MovieData> AvailableMovies => availableMovies;
 
@@ -40,7 +41,22 @@ namespace CinemaTycoon.Schedule
         public void Initialize()
         {
             _hallCleanliness = 100f;
+            InitializeHype();
             OnCleanlinessChanged?.Invoke(_hallCleanliness);
+        }
+
+        private void InitializeHype()
+        {
+            _genreHype.Clear();
+            foreach (MovieGenre genre in Enum.GetValues(typeof(MovieGenre)))
+            {
+                _genreHype[genre] = 1.0f; // Start at 100% hype
+            }
+        }
+
+        public float GetGenreHype(MovieGenre genre)
+        {
+            return _genreHype.TryGetValue(genre, out float hype) ? hype : 1.0f;
         }
 
         private void Update()
@@ -73,11 +89,20 @@ namespace CinemaTycoon.Schedule
 
         /// <summary>
         /// UI entry point: schedule a movie with optional delay. Returns false
-        /// if a show is already running or the movie is null.
+        /// if a show is already running or the movie is null or player cannot afford licensing.
         /// </summary>
         public bool TryScheduleShow(MovieData movie, float delaySeconds = 0f)
         {
             if (movie == null || _showActive) return false;
+            var gm = GameManager.Instance;
+            if (gm != null && gm.Economy != null)
+            {
+                if (!gm.Economy.CanAfford(movie.licensingCost))
+                {
+                    Debug.Log($"[Schedule] Cannot afford licensing cost of ${movie.licensingCost} for '{movie.title}'.");
+                    return false;
+                }
+            }
             _currentMovie = movie;
             if (delaySeconds <= 0f) return TryStartShow(movie);
             _scheduledStartTime = Time.time + delaySeconds;
@@ -86,7 +111,7 @@ namespace CinemaTycoon.Schedule
 
         /// <summary>
         /// Actually start the show. Validates the staffing gate (Cashier on duty)
-        /// and applies a cleanliness penalty if the hall is dirty.
+        /// and applies a cleanliness penalty if the hall is dirty. Deducts licensing cost.
         /// </summary>
         public bool TryStartShow(MovieData movie)
         {
@@ -100,6 +125,30 @@ namespace CinemaTycoon.Schedule
             {
                 Debug.Log("[Schedule] Cannot start show — no Cashier on duty.");
                 return false;
+            }
+
+            if (gm.Economy != null)
+            {
+                if (!gm.Economy.CanAfford(movie.licensingCost))
+                {
+                    Debug.Log($"[Schedule] Cannot afford licensing fee for {movie.title}.");
+                    return false;
+                }
+                gm.Economy.Spend(movie.licensingCost, $"License: {movie.title}");
+            }
+
+            // Adjust genre hype: played genre loses hype, others slowly recover
+            foreach (MovieGenre genre in Enum.GetValues(typeof(MovieGenre)))
+            {
+                float current = GetGenreHype(genre);
+                if (genre == movie.genre)
+                {
+                    _genreHype[genre] = Mathf.Clamp(current - 0.25f, 0.3f, 1.0f);
+                }
+                else
+                {
+                    _genreHype[genre] = Mathf.Clamp(current + 0.15f, 0.3f, 1.0f);
+                }
             }
 
             if (_hallCleanliness < cleanlinessThreshold)

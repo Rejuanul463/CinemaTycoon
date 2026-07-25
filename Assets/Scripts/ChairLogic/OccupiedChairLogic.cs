@@ -17,14 +17,29 @@ public class OccupiedChairLogic : MonoBehaviour
              "approachOffset (use a child empty GameObject placed in the aisle).")]
     [SerializeField] private Transform approachPoint;
 
+    [Header("Trash & Cleanliness")]
+    [Tooltip("Optional child GameObject toggled on when the chair is dirty/trashed post-show.")]
+    [SerializeField] private GameObject trashProp;
+    [Tooltip("Chance (0..1) that a customer leaving this chair leaves trash behind.")]
+    [SerializeField, Range(0f, 1f)] private float trashChance = 0.4f;
+
     /// <summary>True while no customer has reserved this chair for the show.</summary>
     public bool IsFree { get; private set; } = true;
 
     /// <summary>True while a sitting-character child is visibly shown.</summary>
     public bool IsOccupied { get; private set; }
 
+    /// <summary>True if the chair is dirty from trash left by a previous customer.</summary>
+    public bool IsDirty { get; private set; }
+
     /// <summary>The customer that reserved this chair (debugging aid); null when free.</summary>
     public Customer Occupant { get; private set; }
+
+    public void SetDirty(bool dirty)
+    {
+        IsDirty = dirty;
+        if (trashProp != null) trashProp.SetActive(dirty);
+    }
 
     /// <summary>
     /// World position the customer should path to before sitting. Prefer the
@@ -78,6 +93,12 @@ public class OccupiedChairLogic : MonoBehaviour
         if (characterPrefabs != null && characterPrefabs.Length > 0)
             characterPrefabs[randomIndex].SetActive(false);
         IsOccupied = false;
+
+        // Roll chance for customer to leave trash
+        if (Random.value < trashChance)
+        {
+            SetDirty(true);
+        }
     }
 
     private void OnDrawGizmosSelected()

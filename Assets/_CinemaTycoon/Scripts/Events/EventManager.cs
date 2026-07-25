@@ -7,7 +7,7 @@ using CinemaTycoon.Customers;
 
 namespace CinemaTycoon.Events
 {
-    public enum GameEventType { Spill, VIPVisit, RowdyCustomer }
+    public enum GameEventType { Spill, VIPVisit, RowdyCustomer, ProjectorBreakdown, ToiletClog }
 
     public class GameEvent
     {
@@ -57,7 +57,7 @@ namespace CinemaTycoon.Events
         [SerializeField] private float vipServiceWindow = 60f;
         [SerializeField] private float vipGoodServiceReward = 20f;
         [SerializeField] private float vipPoorServicePenalty = 25f;
-        [SerializeField] [Range(0f, 1f)] private float spillWeight = 0.6f;
+        [SerializeField] [Range(0f, 1f)] private float spillWeight = 0.4f;
 
         [Header("Rowdy Customer")]
         [SerializeField] private float rowdyDuration = 35f;
@@ -131,8 +131,10 @@ namespace CinemaTycoon.Events
         {
             float roll = UnityEngine.Random.value;
             if (roll < spillWeight) TriggerSpill();
-            else if (roll < spillWeight + (1f - spillWeight) * 0.5f) TriggerVipVisit();
-            else TriggerRowdyCustomer();
+            else if (roll < spillWeight + 0.15f) TriggerVipVisit();
+            else if (roll < spillWeight + 0.30f) TriggerRowdyCustomer();
+            else if (roll < spillWeight + 0.45f) TriggerProjectorBreakdown();
+            else TriggerToiletClog();
         }
 
         private void TriggerSpill()
@@ -268,6 +270,40 @@ namespace CinemaTycoon.Events
             OnEventTriggered?.Invoke(evt);
         }
 
+        private void TriggerProjectorBreakdown()
+        {
+            var wp = CinemaWaypoints.Instance;
+            Vector3 loc = wp != null && wp.TicketBooth != null ? wp.TicketBooth.position : Vector3.zero;
+            var evt = new GameEvent
+            {
+                Type = GameEventType.ProjectorBreakdown,
+                Title = "Projector Failure!",
+                Description = "The theater projector broke down! Send a Janitor to fix it immediately.",
+                Location = loc,
+                RemainingTime = 35f,
+                TotalDuration = 35f
+            };
+            _activeEvents.Add(evt);
+            OnEventTriggered?.Invoke(evt);
+        }
+
+        private void TriggerToiletClog()
+        {
+            var wp = CinemaWaypoints.Instance;
+            Vector3 loc = wp != null && wp.MaleBathroom != null ? wp.MaleBathroom.position : Vector3.zero;
+            var evt = new GameEvent
+            {
+                Type = GameEventType.ToiletClog,
+                Title = "Clogged Bathroom!",
+                Description = "A bathroom stall is clogged. Send a Janitor to unclog it.",
+                Location = loc,
+                RemainingTime = 40f,
+                TotalDuration = 40f
+            };
+            _activeEvents.Add(evt);
+            OnEventTriggered?.Invoke(evt);
+        }
+
         public void ResolveEvent(GameEvent evt)
         {
             if (evt.Resolved) return;
@@ -293,6 +329,14 @@ namespace CinemaTycoon.Events
             {
                 gm.AdjustCinemaRating(rowdyResolutionReward, "Rowdy customer escorted out by Guard");
             }
+            else if (evt.Type == GameEventType.ProjectorBreakdown)
+            {
+                gm.AdjustCinemaRating(5f, "Projector repaired by Janitor");
+            }
+            else if (evt.Type == GameEventType.ToiletClog)
+            {
+                gm.AdjustCinemaRating(4f, "Toilet unclogged by Janitor");
+            }
             else
             {
                 gm.AdjustCinemaRating(2f, "Spill cleaned");
@@ -317,6 +361,15 @@ namespace CinemaTycoon.Events
                 if (evt.RelatedCustomer != null && evt.RelatedCustomer.IsRowdy)
                     evt.RelatedCustomer.EscortOutByGuard();
                 gm.AdjustCinemaRating(-rowdyPenalty, "Rowdy customer caused disruption");
+            }
+            else if (evt.Type == GameEventType.ProjectorBreakdown)
+            {
+                gm.AdjustCinemaRating(-20f, "Projector failure ruined show");
+                if (gm.Economy != null) gm.Economy.Spend(100f, "Refunds for broken show");
+            }
+            else if (evt.Type == GameEventType.ToiletClog)
+            {
+                gm.AdjustCinemaRating(-15f, "Unresolved toilet clog angered audience");
             }
             else
                 gm.AdjustCinemaRating(-vipPoorServicePenalty, "VIP left unserved");

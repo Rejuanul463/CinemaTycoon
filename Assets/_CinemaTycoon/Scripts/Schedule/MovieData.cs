@@ -16,6 +16,7 @@ namespace CinemaTycoon.Schedule
         [Tooltip("In-game seconds the show lasts.")]
         public float duration = 60f;
         public float baseTicketPrice = 12f;
+        public float licensingCost = 150f;
 
         [Header("Audience")]
         [Range(0f, 1f)] public float popularity = 0.5f;

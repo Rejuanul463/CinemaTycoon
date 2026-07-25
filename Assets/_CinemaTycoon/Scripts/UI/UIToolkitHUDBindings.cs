@@ -491,7 +491,9 @@ namespace CinemaTycoon.UI
             {
                 if (movie == null) continue;
 
-                var button = new Button { text = $"{movie.title} (${movie.baseTicketPrice})" };
+                float hype = gm.Schedule.GetGenreHype(movie.genre);
+                string labelText = $"{movie.title} [Lic: ${movie.licensingCost:F0}] (Hype: {hype * 100f:F0}%)";
+                var button = new Button { text = labelText };
                 button.AddToClassList("action-button");
                 EventCallback<ClickEvent> callback = _ => TryScheduleMovie(movie);
                 button.RegisterCallback<ClickEvent>(callback);
@@ -700,9 +702,25 @@ namespace CinemaTycoon.UI
             var gm = GameManager.Instance;
             if (gm == null || gm.Staff == null) return;
 
-            if (_hireCashierButton != null) _hireCashierButton.SetEnabled(balance >= gm.Staff.GetHireCost(StaffRole.Cashier));
-            if (_hireJanitorButton != null) _hireJanitorButton.SetEnabled(balance >= gm.Staff.GetHireCost(StaffRole.Janitor));
-            if (_hireGuardButton != null) _hireGuardButton.SetEnabled(balance >= gm.Staff.GetHireCost(StaffRole.Guard));
+            float cashierCost = gm.Staff.GetHireCost(StaffRole.Cashier);
+            float janitorCost = gm.Staff.GetHireCost(StaffRole.Janitor);
+            float guardCost = gm.Staff.GetHireCost(StaffRole.Guard);
+
+            if (_hireCashierButton != null)
+            {
+                _hireCashierButton.text = $"Hire Cashier (${cashierCost:F0})";
+                _hireCashierButton.SetEnabled(balance >= cashierCost);
+            }
+            if (_hireJanitorButton != null)
+            {
+                _hireJanitorButton.text = $"Hire Janitor (${janitorCost:F0})";
+                _hireJanitorButton.SetEnabled(balance >= janitorCost);
+            }
+            if (_hireGuardButton != null)
+            {
+                _hireGuardButton.text = $"Hire Guard (${guardCost:F0})";
+                _hireGuardButton.SetEnabled(balance >= guardCost);
+            }
 
             if (gm.Economy == null) return;
 

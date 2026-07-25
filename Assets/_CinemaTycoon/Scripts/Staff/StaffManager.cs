@@ -36,11 +36,32 @@ namespace CinemaTycoon.Staff
         private void OnEnable()
         {
             EventManager.OnEventTriggered += HandleEventTriggered;
+            ScheduleManager.OnShowEnded += HandleShowEnded;
         }
 
         private void OnDisable()
         {
             EventManager.OnEventTriggered -= HandleEventTriggered;
+            ScheduleManager.OnShowEnded -= HandleShowEnded;
+        }
+
+        private void HandleShowEnded(MovieData movie)
+        {
+            var handler = ChairLogicHandler.Instance;
+            if (handler == null) return;
+            var dirtyChairs = handler.GetDirtyChairs();
+            foreach (var chair in dirtyChairs)
+            {
+                if (chair == null) continue;
+                var targetChair = chair;
+                EnqueueTask(new StaffTask
+                {
+                    TargetPosition = targetChair.GetApproachPosition(),
+                    Priority = 0,
+                    RequiredRole = StaffRole.Janitor,
+                    OnComplete = () => targetChair.SetDirty(false)
+                });
+            }
         }
 
         private void Update()
@@ -80,6 +101,14 @@ namespace CinemaTycoon.Staff
             }
         }
 
+        public int CountRole(StaffRole role)
+        {
+            int count = 0;
+            foreach (var s in _activeStaff)
+                if (s.Role == role) count++;
+            return count;
+        }
+
         public bool TryHire(StaffRole role)
         {
             var cfg = GetConfig(role);
@@ -88,13 +117,14 @@ namespace CinemaTycoon.Staff
             var gm = GameManager.Instance;
             if (gm == null || gm.Economy == null) return false;
 
-            if (!gm.Economy.CanAfford(cfg.hireCost))
+            float cost = GetHireCost(role);
+            if (!gm.Economy.CanAfford(cost))
             {
-                Debug.Log($"[StaffManager] Cannot afford ${cfg.hireCost} to hire {role}.");
+                Debug.Log($"[StaffManager] Cannot afford ${cost:F0} to hire {role}.");
                 return false;
             }
 
-            gm.Economy.Spend(cfg.hireCost, $"Hire {role}");
+            gm.Economy.Spend(cost, $"Hire {role}");
 
             var prefab = PickStaffPrefab();
             if (prefab == null)
@@ -133,13 +163,15 @@ namespace CinemaTycoon.Staff
         }
 
         /// <summary>
-        /// Returns the configured hire cost for the given role, or 0 if no config
-        /// is assigned. Used by the HUD to gate hire buttons by affordability.
+        /// Returns the escalated hire cost for the given role based on active staff count.
+        /// Base cost * (1 + 0.5 * active_count_of_role).
         /// </summary>
         public float GetHireCost(StaffRole role)
         {
             var cfg = GetConfig(role);
-            return cfg != null ? cfg.hireCost : 0f;
+            if (cfg == null) return 0f;
+            int count = CountRole(role);
+            return cfg.hireCost * (1f + 0.5f * count);
         }
 
         public void EnqueueTask(StaffTask task) => _pendingTasks.Enqueue(task);
@@ -263,6 +295,21 @@ namespace CinemaTycoon.Staff
                     {
                         evt.IsGuardEscorted = true;
                         Debug.Log("[StaffManager] Guard successfully escorted VIP!");
+                    }
+                });
+            }
+            else if (evt.Type == GameEventType.ProjectorBreakdown || evt.Type == GameEventType.ToiletClog)
+            {
+                Debug.Log($"[StaffManager] Repair task ({evt.Type}) enqueued for Janitor at {evt.Location}");
+                EnqueueTask(new StaffTask
+                {
+                    TargetPosition = evt.Location,
+                    Priority = 1,
+                    RequiredRole = StaffRole.Janitor,
+                    OnComplete = () =>
+                    {
+                        var gm = GameManager.Instance;
+                        if (gm != null && gm.Events != null) gm.Events.ResolveEvent(evt);
                     }
                 });
             }
