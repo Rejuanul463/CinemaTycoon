@@ -40,6 +40,14 @@ namespace CinemaTycoon.Core
                  "customers will skip the bathroom detour).")]
         [SerializeField] private Transform maleBathroom;
 
+        [Header("Arcade Machines (optional — not occupancy-limited)")]
+        [Tooltip("Where customers walk to and stand when they 'play' an arcade game. " +
+                 "Each customer picks one at random on entry. Unlike the bathroom, " +
+                 "arcades are NOT single-occupancy — multiple customers can stand at " +
+                 "the same machine at once. Leave the list empty to disable the " +
+                 "arcade detour entirely.")]
+        [SerializeField] private Transform[] arcadeMachines;
+
         private void Awake() => Instance = this;
 
         public Transform SpawnPoint => spawnPoint;
@@ -52,6 +60,32 @@ namespace CinemaTycoon.Core
         public Transform GuardStation => guardStation;
         public Transform FemaleBathroom => femaleBathroom;
         public Transform MaleBathroom => maleBathroom;
+        public Transform[] ArcadeMachines => arcadeMachines;
+
+        /// <summary>
+        /// Pick a uniformly random non-null arcade machine. Returns null when
+        /// no machines are assigned (or all assigned slots are null), which
+        /// the Customer FSM treats as "skip the arcade detour this visit".
+        /// Filters nulls first so a half-empty inspector list doesn't bias
+        /// the pick toward the live entries.
+        /// </summary>
+        public Transform PickRandomArcade()
+        {
+            if (arcadeMachines == null || arcadeMachines.Length == 0) return null;
+            int validCount = 0;
+            for (int i = 0; i < arcadeMachines.Length; i++)
+                if (arcadeMachines[i] != null) validCount++;
+            if (validCount == 0) return null;
+
+            int pick = UnityEngine.Random.Range(0, validCount);
+            for (int i = 0; i < arcadeMachines.Length; i++)
+            {
+                if (arcadeMachines[i] == null) continue;
+                if (pick == 0) return arcadeMachines[i];
+                pick--;
+            }
+            return null; // unreachable
+        }
 
         public int QueueCapacity => queuePoints != null ? queuePoints.Length : 0;
 

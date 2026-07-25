@@ -9,7 +9,8 @@ namespace CinemaTycoon.Customers
 {
     public enum CustomerStateType
     { Entering, Queuing, Purchasing, Popcorn, Watching, Leaving, Unsatisfied,
-      GoingToBathroom, UsingBathroom, ReturningFromBathroom }
+      GoingToBathroom, UsingBathroom, ReturningFromBathroom,
+      GoingToArcade, UsingArcade }
 
     /// <summary>Customer gender. Drives which bathroom waypoint they may use.</summary>
     public enum Gender { Male, Female }
@@ -41,7 +42,17 @@ namespace CinemaTycoon.Customers
         public override void Tick()
         {
             if (!Customer.Agent.pathPending && Customer.Agent.remainingDistance < 1.5f)
+            {
+                // Pre-queue arcade: a small chance to play a random arcade
+                // game before joining the queue, mimicking the "kill time
+                // before the movie" behavior. NeedsArcade() is a fresh roll
+                // per customer; TryGoToArcade() is a no-op when no machines
+                // are assigned, so the call is safe even with an empty list.
+                if (Customer.NeedsArcade() && Customer.TryGoToArcade())
+                    return; // TryGoToArcade already transitioned the state
+
                 GoTo(CustomerStateType.Queuing);
+            }
         }
     }
 
@@ -413,6 +424,70 @@ namespace CinemaTycoon.Customers
         public override void Exit() => Customer.ReleaseBathroom();
     }
 
+    // ---------- Arcade trip ----------
+
+    /// <summary>
+    /// Walks the customer to a randomly-picked arcade machine. The pick
+    /// happens in Enter (via <see cref="CinemaWaypoints.PickRandomArcade"/>)
+    /// so the same customer doesn't get re-rolled if the state is somehow
+    /// re-entered. Multiple customers can target the same machine — the
+    /// arcade is NOT single-occupancy, unlike the bathroom. If the list is
+    /// empty (e.g. designer removed all entries) the state falls through
+    /// to Queuing so the customer isn't stranded.
+    /// </summary>
+    public sealed class GoingToArcadeState : CustomerState
+    {
+        public override CustomerStateType Type => CustomerStateType.GoingToArcade;
+        public GoingToArcadeState(Customer c) : base(c) { }
+
+        public override void Enter()
+        {
+            var wp = CinemaWaypoints.Instance;
+            var arcade = wp != null ? wp.PickRandomArcade() : null;
+            if (arcade == null)
+            {
+                // No arcades available — skip the detour and join the queue.
+                GoTo(CustomerStateType.Queuing);
+                return;
+            }
+
+            Customer.Agent.isStopped = false;
+            Customer.Agent.SetDestination(arcade.position);
+        }
+
+        public override void Tick()
+        {
+            if (Customer.Agent.pathPending) return;
+            if (Customer.Agent.remainingDistance < 1.0f)
+                GoTo(CustomerStateType.UsingArcade);
+        }
+    }
+
+    /// <summary>
+    /// Customer stands at the arcade machine for a fixed duration
+    /// (mimicking play — no actual interaction or animation). When the
+    /// timer expires, the customer goes to QueuingState to resume the
+    /// normal flow (ticket → popcorn → bathroom → seat).
+    /// </summary>
+    public sealed class UsingArcadeState : CustomerState
+    {
+        public override CustomerStateType Type => CustomerStateType.UsingArcade;
+        private float _timer;
+
+        public UsingArcadeState(Customer c) : base(c) { }
+
+        public override void Enter()
+        {
+            _timer = Customer.ArcadeUseDuration;
+        }
+
+        public override void Tick()
+        {
+            _timer -= Time.deltaTime;
+            if (_timer <= 0f) GoTo(CustomerStateType.Queuing);
+        }
+    }
+
     // ---------- Customer MonoBehaviour ----------
 
     [RequireComponent(typeof(NavMeshAgent))]
@@ -447,12 +522,24 @@ namespace CinemaTycoon.Customers
                  "detour is skipped for this visit.")]
         [SerializeField, Range(0f, 1f)] private float preShowBathroomChance = 0.15f;
 
+        [Header("Arcade")]
+        [Tooltip("Seconds a customer spends standing at an arcade machine " +
+                 "('playing' — no actual interaction). Stand-in for the visual " +
+                 "duration of a quick arcade game.")]
+        [SerializeField] private float arcadeUseDuration = 10f;
+        [Tooltip("Chance (0..1) that a customer will detour to a random arcade " +
+                 "machine on entering the cinema, BEFORE joining the queue. " +
+                 "Mimics the 'kill time before the movie' behavior. Rolls once " +
+                 "per entry; if no arcades are assigned the detour is skipped.")]
+        [SerializeField, Range(0f, 1f)] private float preShowArcadeChance = 0.2f;
+
         // Read access for state classes
         public float QueuePatiencePerSecond => queuePatiencePerSecond;
         public float WatchSatisfactionPerSecond => watchSatisfactionPerSecond;
         public float UnsatisfiedThreshold => unsatisfiedThreshold;
         public float ChairArrivalDistance => chairArrivalDistance;
         public float BathroomUseDuration => bathroomUseDuration;
+        public float ArcadeUseDuration => arcadeUseDuration;
         public NavMeshAgent Agent { get; private set; }
         public float Satisfaction { get; private set; }
         public bool IsVIP { get; private set; }
@@ -597,6 +684,8 @@ namespace CinemaTycoon.Customers
                 CustomerStateType.GoingToBathroom       => new GoingToBathroomState(this),
                 CustomerStateType.UsingBathroom         => new UsingBathroomState(this),
                 CustomerStateType.ReturningFromBathroom => new ReturningFromBathroomState(this),
+                CustomerStateType.GoingToArcade         => new GoingToArcadeState(this),
+                CustomerStateType.UsingArcade           => new UsingArcadeState(this),
                 _ => _currentState
             });
         }
@@ -763,6 +852,36 @@ namespace CinemaTycoon.Customers
         public bool NeedsBathroom()
         {
             return UnityEngine.Random.value < preShowBathroomChance;
+        }
+
+        /// <summary>
+        /// Roll whether this customer will detour to an arcade machine on
+        /// entering the cinema, before joining the queue. Independent of
+        /// the bathroom chance — a customer can roll true for both
+        /// (one will fire first), false for both, or either combination.
+        /// </summary>
+        public bool NeedsArcade()
+        {
+            return UnityEngine.Random.value < preShowArcadeChance;
+        }
+
+        /// <summary>
+        /// Try to start an arcade trip. If at least one arcade machine is
+        /// assigned, transitions to GoingToArcadeState which picks a
+        /// random machine and walks there. Returns false (no transition)
+        /// when no machines are available so the caller can proceed with
+        /// its normal flow.
+        /// </summary>
+        public bool TryGoToArcade()
+        {
+            var wp = CinemaWaypoints.Instance;
+            if (wp == null || wp.ArcadeMachines == null || wp.ArcadeMachines.Length == 0)
+                return false;
+            // GoingToArcadeState.Enter picks a random non-null machine via
+            // CinemaWaypoints.PickRandomArcade, so we don't need to roll
+            // here — an empty / all-null list is the only failure mode.
+            ChangeState(new GoingToArcadeState(this));
+            return true;
         }
 
         /// <summary>
