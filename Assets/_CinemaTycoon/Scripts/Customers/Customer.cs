@@ -4,6 +4,7 @@ using UnityEngine.AI;
 using CinemaTycoon.Core;
 using CinemaTycoon.Economy;
 using CinemaTycoon.Schedule;
+using CinemaTycoon.Staff;
 
 namespace CinemaTycoon.Customers
 {
@@ -76,7 +77,10 @@ namespace CinemaTycoon.Customers
             if (gm == null || wp == null) return;
 
             // Satisfaction drains while waiting. FasterCashier upgrade softens this.
+            // Presence of a Guard on duty reduces queue frustration by 25%.
             float patience = Customer.QueuePatiencePerSecond;
+            if (gm.Staff != null && gm.Staff.HasRoleOnDuty(StaffRole.Guard))
+                patience *= 0.75f;
             float cashierMult = gm.Economy != null ? gm.Economy.CashierSpeedMultiplier : 1f;
             Customer.ReduceSatisfaction(patience * Time.deltaTime / cashierMult);
 
@@ -543,6 +547,8 @@ namespace CinemaTycoon.Customers
         public NavMeshAgent Agent { get; private set; }
         public float Satisfaction { get; private set; }
         public bool IsVIP { get; private set; }
+        /// <summary>True if customer has been flagged as a Rowdy Customer event target.</summary>
+        public bool IsRowdy { get; private set; }
         public int QueueIndex { get; private set; } = -1;
         public bool IsAtFrontOfQueue { get; private set; }
         public bool CashierReady { get; private set; }
@@ -771,6 +777,18 @@ namespace CinemaTycoon.Customers
 
         /// <summary>Used by EventManager to elevate a normal customer to VIP mid-visit.</summary>
         public void MarkAsVIP() => IsVIP = true;
+
+        /// <summary>Used by EventManager to flag a customer as rowdy.</summary>
+        public void MarkAsRowdy() => IsRowdy = true;
+
+        /// <summary>Called when a Guard intercept task completes on a rowdy customer.</summary>
+        public void EscortOutByGuard()
+        {
+            IsRowdy = false;
+            ReleaseBathroom();
+            ReleaseReservedChair();
+            RequestTransition(CustomerStateType.Leaving);
+        }
 
         public void AssignChair(OccupiedChairLogic chair) => _reservedChair = chair;
 

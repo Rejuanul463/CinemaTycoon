@@ -32,6 +32,11 @@ namespace CinemaTycoon.Staff
         /// floor. Leave null for position-only tasks (no implicit cancel).
         /// </summary>
         public GameObject TargetDecal;
+        /// <summary>
+        /// Optional target customer for guard interactions (e.g. VIP escorting
+        /// or removing a rowdy customer).
+        /// </summary>
+        public CinemaTycoon.Customers.Customer TargetCustomer;
         public System.Action OnComplete;
         public int Priority;
         /// <summary>

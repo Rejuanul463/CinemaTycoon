@@ -7,7 +7,7 @@ using CinemaTycoon.Customers;
 
 namespace CinemaTycoon.Events
 {
-    public enum GameEventType { Spill, VIPVisit }
+    public enum GameEventType { Spill, VIPVisit, RowdyCustomer }
 
     public class GameEvent
     {
@@ -18,6 +18,8 @@ namespace CinemaTycoon.Events
         public float RemainingTime;
         public float TotalDuration;
         public Customer RelatedVIP;
+        public Customer RelatedCustomer;
+        public bool IsGuardEscorted;
         public bool Resolved;
 
         /// <summary>
@@ -56,6 +58,11 @@ namespace CinemaTycoon.Events
         [SerializeField] private float vipGoodServiceReward = 20f;
         [SerializeField] private float vipPoorServicePenalty = 25f;
         [SerializeField] [Range(0f, 1f)] private float spillWeight = 0.6f;
+
+        [Header("Rowdy Customer")]
+        [SerializeField] private float rowdyDuration = 35f;
+        [SerializeField] private float rowdyPenalty = 15f;
+        [SerializeField] private float rowdyResolutionReward = 15f;
 
         private readonly List<GameEvent> _activeEvents = new();
         private float _nextEventTime;
@@ -122,13 +129,10 @@ namespace CinemaTycoon.Events
 
         private void TriggerRandomEvent()
         {
-            // settoig nthe new state based on the current state
-            GameEventType type = UnityEngine.Random.value < spillWeight
-                ? GameEventType.Spill
-                : GameEventType.VIPVisit;
-
-            if (type == GameEventType.Spill) TriggerSpill();
-            else TriggerVipVisit();
+            float roll = UnityEngine.Random.value;
+            if (roll < spillWeight) TriggerSpill();
+            else if (roll < spillWeight + (1f - spillWeight) * 0.5f) TriggerVipVisit();
+            else TriggerRowdyCustomer();
         }
 
         private void TriggerSpill()
@@ -232,6 +236,38 @@ namespace CinemaTycoon.Events
             OnEventTriggered?.Invoke(evt);
         }
 
+        private void TriggerRowdyCustomer()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Spawner == null) return;
+
+            Customer target = null;
+            foreach (var c in gm.Spawner.ActiveCustomers)
+            {
+                if (!c.IsVIP && !c.IsRowdy && c.gameObject.activeInHierarchy)
+                {
+                    target = c;
+                    break;
+                }
+            }
+            if (target == null) return;
+
+            target.MarkAsRowdy();
+
+            var evt = new GameEvent
+            {
+                Type = GameEventType.RowdyCustomer,
+                Title = "Rowdy Customer!",
+                Description = "A customer is causing a disruption. Send a Guard to escort them out.",
+                Location = target.transform.position,
+                RemainingTime = rowdyDuration,
+                TotalDuration = rowdyDuration,
+                RelatedCustomer = target
+            };
+            _activeEvents.Add(evt);
+            OnEventTriggered?.Invoke(evt);
+        }
+
         public void ResolveEvent(GameEvent evt)
         {
             if (evt.Resolved) return;
@@ -248,8 +284,14 @@ namespace CinemaTycoon.Events
             if (evt.Type == GameEventType.VIPVisit && evt.RelatedVIP != null)
             {
                 float vipSat = evt.RelatedVIP.Satisfaction;
-                float delta = vipSat > 60f ? vipGoodServiceReward : -vipPoorServicePenalty;
-                gm.AdjustCinemaRating(delta, "VIP visit resolved");
+                float bonus = evt.IsGuardEscorted ? 15f : 0f;
+                float delta = (vipSat > 60f ? vipGoodServiceReward : -vipPoorServicePenalty) + bonus;
+                string reason = evt.IsGuardEscorted ? "VIP visit resolved (Guard escorted!)" : "VIP visit resolved";
+                gm.AdjustCinemaRating(delta, reason);
+            }
+            else if (evt.Type == GameEventType.RowdyCustomer)
+            {
+                gm.AdjustCinemaRating(rowdyResolutionReward, "Rowdy customer escorted out by Guard");
             }
             else
             {
@@ -264,12 +306,18 @@ namespace CinemaTycoon.Events
             var gm = GameManager.Instance;
             if (gm == null) return;
 
-            // Janitor never came. Still tear the decal down so the floor
+            // Janitor/Guard never came. Still tear the decal down so the floor
             // doesn't keep a stale "wet floor" forever.
             TearDownDecal(evt);
 
             if (evt.Type == GameEventType.Spill)
                 gm.AdjustCinemaRating(-unresolvedSpillPenalty, "Unresolved spill");
+            else if (evt.Type == GameEventType.RowdyCustomer)
+            {
+                if (evt.RelatedCustomer != null && evt.RelatedCustomer.IsRowdy)
+                    evt.RelatedCustomer.EscortOutByGuard();
+                gm.AdjustCinemaRating(-rowdyPenalty, "Rowdy customer caused disruption");
+            }
             else
                 gm.AdjustCinemaRating(-vipPoorServicePenalty, "VIP left unserved");
 

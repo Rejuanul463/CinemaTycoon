@@ -94,5 +94,26 @@ namespace CinemaTycoon.Core
             if (queuePoints == null || queuePoints.Length == 0) return ticketBooth;
             return queuePoints[Mathf.Clamp(index, 0, queuePoints.Length - 1)];
         }
+
+        /// <summary>
+        /// Returns a random lobby waypoint (GuardStation, TicketBooth, PopcornStand, ExitPoint)
+        /// for Guard idle patrol.
+        /// </summary>
+        public Transform PickRandomPatrolPoint()
+        {
+            var candidates = new System.Collections.Generic.List<Transform>();
+            if (guardStation != null) candidates.Add(guardStation);
+            if (ticketBooth != null) candidates.Add(ticketBooth);
+            if (popcornStand != null) candidates.Add(popcornStand);
+            if (exitPoint != null) candidates.Add(exitPoint);
+            if (arcadeMachines != null)
+            {
+                foreach (var a in arcadeMachines)
+                    if (a != null) candidates.Add(a);
+            }
+
+            if (candidates.Count == 0) return null;
+            return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        }
     }
 }

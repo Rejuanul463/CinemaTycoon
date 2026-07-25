@@ -34,7 +34,7 @@ namespace CinemaTycoon.DevTools
 
             GUILayout.Label($"Balance: ${gm.Economy.Balance:F0}");
             GUILayout.Label($"Rating:  {gm.CinemaRating:F1}%");
-            GUILayout.Label($"Janitors: {CountJanitors(gm)} on duty");
+            GUILayout.Label($"Janitors: {CountJanitors(gm)} | Guards: {CountGuards(gm)} on duty");
 
             // Show the cleanliness trend so the user understands the bar's
             // "fighting itself" behaviour. State is sourced from the public
@@ -60,20 +60,11 @@ namespace CinemaTycoon.DevTools
 
             if (GUILayout.Button("Force Spill Here (at camera)"))
             {
-                // Guard: if the user triggered this from the main menu or the
-                // pause overlay, Time.timeScale == 0 and the rest of the world
-                // is frozen — the spill event will be created but no one will
-                // move and the timer won't decrement. Detect that and warn
-                // loudly so the user knows to click "Start Game" / "Resume"
-                // before re-trying. The spill is still created (the EventManager
-                // runs even at timeScale 0), but it will only become visible
-                // once the game is unpaused.
                 if (Mathf.Approximately(Time.timeScale, 0f))
                 {
                     Debug.LogWarning("[CheatManager] Time.timeScale is 0 — you appear to be in the " +
                                      "main menu or the pause overlay. The spill was spawned but the " +
-                                     "simulation is frozen. Click 'Start Game' on the main menu (or " +
-                                     "press Escape to resume) before testing the cleanup flow.");
+                                     "simulation is frozen.");
                 }
                 var cam = Camera.main;
                 Vector3 pos = cam != null ? cam.transform.position : Vector3.zero;
@@ -89,6 +80,15 @@ namespace CinemaTycoon.DevTools
             int n = 0;
             foreach (var s in gm.Staff.ActiveStaff)
                 if (s != null && s.Role == Staff.StaffRole.Janitor) n++;
+            return n;
+        }
+
+        private static int CountGuards(GameManager gm)
+        {
+            if (gm?.Staff == null) return 0;
+            int n = 0;
+            foreach (var s in gm.Staff.ActiveStaff)
+                if (s != null && s.Role == Staff.StaffRole.Guard) n++;
             return n;
         }
     }

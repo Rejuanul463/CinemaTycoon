@@ -202,49 +202,70 @@ namespace CinemaTycoon.Staff
         }
 
         /// <summary>
-        /// Auto-divert a Janitor to a Spill event's location. When the Janitor
-        /// finishes the task, the cleanup callback resolves the event.
+        /// Auto-divert Staff to events (Janitor for Spills, Guard for Rowdy Customers and VIP Escorts).
         /// </summary>
         private void HandleEventTriggered(GameEvent evt)
         {
-            if (evt.Type != GameEventType.Spill) return;
-
-            // Pre-flight NavMesh check. The most common cause of "the janitor
-            // never shows up to clean the spill" is that the event's Location
-            // (or one of the random Possible Spill Locations) sits off the
-            // baked NavMesh — the agent accepts the destination, computes no
-            // path, and silently stays put. Sample the NavMesh first; if the
-            // point isn't reachable, skip the task with a clear warning
-            // pointing the designer at the offending config.
-            const float SampleRadius = 1.5f; // 1.5m tolerance — Spill Locations may float slightly off-mesh
-            if (!NavMesh.SamplePosition(evt.Location, out _, SampleRadius, NavMesh.AllAreas))
+            if (evt.Type == GameEventType.Spill)
             {
-                Debug.LogWarning($"[StaffManager] Spill at {evt.Location} is not on the NavMesh " +
-                                 $"(sample radius {SampleRadius}m). Janitor task skipped — " +
-                                 $"check that 'Possible Spill Locations' (or whatever produced this point) " +
-                                 $"are placed on a walkable surface. Spill will time out and apply its penalty.");
-                return;
-            }
-
-            Debug.Log($"[StaffManager] Spill task enqueued at {evt.Location} (decal: {(evt.PhysicalDecal != null ? evt.PhysicalDecal.name : "<none>")})");
-            EnqueueTask(new StaffTask
-            {
-                TargetPosition = evt.Location,
-                // Tie the task to the actual decal GameObject (if any). Staff
-                // then watches the reference and cancels the task if the decal
-                // is destroyed mid-walk (e.g. the spill expired). Tasks without
-                // a decal target are position-only and run to completion.
-                TargetDecal = evt.PhysicalDecal,
-                Priority = 0,
-                // Spill cleanup is the Janitor's job — a closer idle Cashier
-                // or Guard must not be diverted from their own station.
-                RequiredRole = StaffRole.Janitor,
-                OnComplete = () =>
+                const float SampleRadius = 1.5f; // 1.5m tolerance — Spill Locations may float slightly off-mesh
+                if (!NavMesh.SamplePosition(evt.Location, out _, SampleRadius, NavMesh.AllAreas))
                 {
-                    var gm = GameManager.Instance;
-                    if (gm != null && gm.Events != null) gm.Events.ResolveEvent(evt);
+                    Debug.LogWarning($"[StaffManager] Spill at {evt.Location} is not on the NavMesh " +
+                                     $"(sample radius {SampleRadius}m). Janitor task skipped — " +
+                                     $"check that 'Possible Spill Locations' (or whatever produced this point) " +
+                                     $"are placed on a walkable surface. Spill will time out and apply its penalty.");
+                    return;
                 }
-            });
+
+                Debug.Log($"[StaffManager] Spill task enqueued at {evt.Location} (decal: {(evt.PhysicalDecal != null ? evt.PhysicalDecal.name : "<none>")})");
+                EnqueueTask(new StaffTask
+                {
+                    TargetPosition = evt.Location,
+                    TargetDecal = evt.PhysicalDecal,
+                    Priority = 0,
+                    RequiredRole = StaffRole.Janitor,
+                    OnComplete = () =>
+                    {
+                        var gm = GameManager.Instance;
+                        if (gm != null && gm.Events != null) gm.Events.ResolveEvent(evt);
+                    }
+                });
+            }
+            else if (evt.Type == GameEventType.RowdyCustomer && evt.RelatedCustomer != null)
+            {
+                Debug.Log($"[StaffManager] Rowdy customer task enqueued for Guard at {evt.RelatedCustomer.transform.position}");
+                EnqueueTask(new StaffTask
+                {
+                    TargetPosition = evt.RelatedCustomer.transform.position,
+                    TargetCustomer = evt.RelatedCustomer,
+                    Priority = 1,
+                    RequiredRole = StaffRole.Guard,
+                    OnComplete = () =>
+                    {
+                        if (evt.RelatedCustomer != null)
+                            evt.RelatedCustomer.EscortOutByGuard();
+                        var gm = GameManager.Instance;
+                        if (gm != null && gm.Events != null) gm.Events.ResolveEvent(evt);
+                    }
+                });
+            }
+            else if (evt.Type == GameEventType.VIPVisit && evt.RelatedVIP != null)
+            {
+                Debug.Log($"[StaffManager] VIP escort task enqueued for Guard at {evt.RelatedVIP.transform.position}");
+                EnqueueTask(new StaffTask
+                {
+                    TargetPosition = evt.RelatedVIP.transform.position,
+                    TargetCustomer = evt.RelatedVIP,
+                    Priority = 0,
+                    RequiredRole = StaffRole.Guard,
+                    OnComplete = () =>
+                    {
+                        evt.IsGuardEscorted = true;
+                        Debug.Log("[StaffManager] Guard successfully escorted VIP!");
+                    }
+                });
+            }
         }
     }
 }

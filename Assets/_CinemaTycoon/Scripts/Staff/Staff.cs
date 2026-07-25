@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 using CinemaTycoon.Events;
+using CinemaTycoon.Core;
 
 namespace CinemaTycoon.Staff
 {
@@ -9,6 +10,7 @@ namespace CinemaTycoon.Staff
     public class Staff : MonoBehaviour
     {
         [SerializeField] private float workSpeed = 1f;
+        [SerializeField] private float patrolInterval = 12f;
 
         public StaffRole Role { get; private set; }
         public StaffRoleData Config { get; private set; }
@@ -31,6 +33,7 @@ namespace CinemaTycoon.Staff
         // for reachable points; we wait 0.5s so the agent has time to fail
         // out cleanly on unreachable ones too).
         private float _taskAssignedAt;
+        private float _patrolTimer;
         private const float UnreachableTimeoutSeconds = 0.5f;
 
         // Cached Animator parameter hashes — avoids string lookups per frame.
@@ -121,6 +124,22 @@ namespace CinemaTycoon.Staff
 
                 _workTimer -= Time.deltaTime * workSpeed;
                 if (_workTimer <= 0f) CompleteTask();
+            }
+            else if (Role == StaffRole.Guard && _currentTask == null)
+            {
+                // Idle patrol for Guard: periodically pick a new patrol waypoint
+                _patrolTimer += Time.deltaTime;
+                if (_patrolTimer >= patrolInterval)
+                {
+                    _patrolTimer = 0f;
+                    var wp = CinemaTycoon.Core.CinemaWaypoints.Instance;
+                    var target = wp != null ? wp.PickRandomPatrolPoint() : null;
+                    if (target != null)
+                    {
+                        _agent.isStopped = false;
+                        _agent.SetDestination(target.position);
+                    }
+                }
             }
         }
 
