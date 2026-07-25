@@ -16,9 +16,25 @@ namespace CinemaTycoon.DevTools
         private bool _showPanel;
         private Rect _panelRect = new Rect(10, 10, 280, 320);
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void AutoInitialize()
+        {
+            if (FindFirstObjectByType<CheatManager>() == null)
+            {
+                var go = new GameObject("[Dev] CheatManager");
+                go.AddComponent<CheatManager>();
+                DontDestroyOnLoad(go);
+                Debug.Log("[CheatManager] Auto-initialized dev cheat panel. Press F1 or ~ (tilde) to toggle.");
+            }
+        }
+
         private void Update()
         {
-            if (Input.GetKeyDown(toggleKey)) _showPanel = !_showPanel;
+            // Support F1, Fn+F1 on Mac, and ~ (BackQuote) key
+            if (Input.GetKeyDown(toggleKey) || Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(KeyCode.BackQuote))
+            {
+                _showPanel = !_showPanel;
+            }
         }
 
         private void OnGUI()
