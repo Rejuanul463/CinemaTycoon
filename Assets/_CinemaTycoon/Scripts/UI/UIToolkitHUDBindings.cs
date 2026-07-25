@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -401,33 +402,49 @@ namespace CinemaTycoon.UI
 
         private void Start()
         {
-            // Initial Menu Pause State
-            Time.timeScale = 0f;
-            _isGameStarted = false;
             _isPaused = false;
             _isGameOver = false;
 
-            if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.Flex;
-            if (_gameplayHud != null) _gameplayHud.style.display = DisplayStyle.None;
-            if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.None;
-            if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.None;
-            if (_gameoverOverlay != null) _gameoverOverlay.style.display = DisplayStyle.None;
+            string activeSceneName = SceneManager.GetActiveScene().name;
+            bool isMenuScene = activeSceneName.Equals("MainMenu", StringComparison.OrdinalIgnoreCase);
 
-            // Set camera to floating menu mode
-            var cam = FindFirstObjectByType<FlyCameraController>();
-            if (cam != null)
+            if (isMenuScene)
             {
-                cam.SetState(FlyCameraController.CameraState.MainMenu);
+                // Main Menu Scene: Freeze simulation until Start Game is clicked
+                Time.timeScale = 0f;
+                _isGameStarted = false;
+
+                if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.Flex;
+                if (_gameplayHud != null) _gameplayHud.style.display = DisplayStyle.None;
+                if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.None;
+                if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.None;
+                if (_gameoverOverlay != null) _gameoverOverlay.style.display = DisplayStyle.None;
+
+                var cam = FindFirstObjectByType<FlyCameraController>();
+                if (cam != null) cam.SetState(FlyCameraController.CameraState.MainMenu);
+            }
+            else
+            {
+                // Gameplay Scene: Enter gameplay directly
+                Time.timeScale = 1f;
+                _isGameStarted = true;
+
+                if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.None;
+                if (_gameplayHud != null) _gameplayHud.style.display = DisplayStyle.Flex;
+                if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.None;
+                if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.None;
+                if (_gameoverOverlay != null) _gameoverOverlay.style.display = DisplayStyle.None;
+
+                var cam = FindFirstObjectByType<FlyCameraController>();
+                if (cam != null) cam.SetState(FlyCameraController.CameraState.FlyMode);
             }
 
             var gm = GameManager.Instance;
             if (gm != null)
             {
                 Debug.Log("[HUD] Start(): GameManager found; populating UI + stats.");
-                // Populate dynamic movie buttons
                 PopulateMovieButtons();
 
-                // Pull initial values for stats
                 HandleBalanceChanged(gm.Economy.Balance);
                 HandleRatingChanged(gm.CinemaRating);
                 HandleCleanlinessChanged(gm.Schedule.HallCleanliness);
@@ -536,14 +553,24 @@ namespace CinemaTycoon.UI
             _isGameStarted = true;
             Time.timeScale = 1f;
 
-            if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.None;
-            if (_gameplayHud != null) _gameplayHud.style.display = DisplayStyle.Flex;
-
-            // Lock cursor and start flight
-            var cam = FindFirstObjectByType<FlyCameraController>();
-            if (cam != null)
+            if (Application.CanStreamedLevelBeLoaded("Demo"))
             {
-                cam.SetState(FlyCameraController.CameraState.FlyMode);
+                SceneManager.LoadScene("Demo");
+            }
+            else if (Application.CanStreamedLevelBeLoaded("Game"))
+            {
+                SceneManager.LoadScene("Game");
+            }
+            else
+            {
+                if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.None;
+                if (_gameplayHud != null) _gameplayHud.style.display = DisplayStyle.Flex;
+
+                var cam = FindFirstObjectByType<FlyCameraController>();
+                if (cam != null)
+                {
+                    cam.SetState(FlyCameraController.CameraState.FlyMode);
+                }
             }
         }
 
@@ -661,14 +688,33 @@ namespace CinemaTycoon.UI
         {
             Time.timeScale = 1f;
             if (GameManager.Instance != null) Destroy(GameManager.Instance.gameObject);
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+
+            string activeScene = SceneManager.GetActiveScene().name;
+            if (activeScene.Equals("MainMenu", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Application.CanStreamedLevelBeLoaded("Demo")) SceneManager.LoadScene("Demo");
+                else if (Application.CanStreamedLevelBeLoaded("Game")) SceneManager.LoadScene("Game");
+                else SceneManager.LoadScene(activeScene);
+            }
+            else
+            {
+                SceneManager.LoadScene(activeScene);
+            }
         }
 
         private void ExitToMainMenu()
         {
             Time.timeScale = 1f;
             if (GameManager.Instance != null) Destroy(GameManager.Instance.gameObject);
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+
+            if (Application.CanStreamedLevelBeLoaded("MainMenu"))
+            {
+                SceneManager.LoadScene("MainMenu");
+            }
+            else
+            {
+                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            }
         }
 
         private void HandleGameOver(string reason)

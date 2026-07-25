@@ -32,11 +32,12 @@ Create 4 Upgrade assets (`PremiumPopcorn`, `FasterCashier`, `ComfySeats`, `Marke
 
 ---
 
-## Step 2: Open the Canonical Scene
-Cinema Tycoon operates in a **single scene** structure.
-1.  In the **Project Window**, open `Assets/Synty/PolygonCity/Scenes/Demo.unity`.
-2.  Go to **File** $\rightarrow$ **Build Settings...** and add the `Demo` scene to the **Scenes In Build** list. (Remove any other scene references).
-3.  This scene already contains a `NavMeshSurface` and a `ChairLogicHandler` hierarchy with the hall chairs — you will extend it in the steps below.
+## Step 2: Configure Multi-Scene Build Settings
+Cinema Tycoon operates in a clean **multi-scene** architecture:
+1. In Unity, go to **File** $\rightarrow$ **Build Settings...**.
+2. Add `Assets/Scenes/MainMenu.unity` as **Scene 0** (loaded first when building/launching).
+3. Add `Assets/Synty/PolygonCity/Scenes/Demo.unity` as **Scene 1** (the main gameplay environment).
+4. `Demo.unity` contains the 3D cinema layout, NavMesh Surface, waypoints, and seating hierarchy.
 
 ---
 
