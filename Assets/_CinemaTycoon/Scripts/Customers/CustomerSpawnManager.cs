@@ -12,7 +12,7 @@ namespace CinemaTycoon.Customers
                  "Every entry must have a Customer component.")]
         [SerializeField] private GameObject[] customerPrefabs;
         [SerializeField] private float spawnInterval = 4f;
-        [SerializeField] private int maxConcurrentCustomers = 12;
+        [SerializeField] private int maxConcurrentCustomers = 30;
         [SerializeField] [Range(0f, 1f)] private float vipChance = 0.08f;
 
         private readonly List<Customer> _queue = new();
@@ -29,12 +29,17 @@ namespace CinemaTycoon.Customers
         {
             _spawnTimer += Time.deltaTime;
 
-            // Marketing upgrade reduces interval (i.e., more spawns per minute).
             var gm = GameManager.Instance;
             if (gm == null || gm.Economy == null) return;
-            float interval = spawnInterval / gm.Economy.MarketingMultiplier;
 
-            if (_spawnTimer >= interval && _active.Count < maxConcurrentCustomers)
+            // Showtime Rush: when a movie is playing or about to start, accelerate
+            // spawn rate and expand concurrent capacity so the auditorium fills up!
+            bool isShowtime = gm.Schedule != null && gm.Schedule.IsMoviePlayingOrImminent;
+            float speedMult = isShowtime ? 2.5f : 1.0f;
+            float interval = (spawnInterval / speedMult) / gm.Economy.MarketingMultiplier;
+            int effectiveCap = isShowtime ? maxConcurrentCustomers : 12;
+
+            if (_spawnTimer >= interval && _active.Count < effectiveCap)
             {
                 _spawnTimer = 0f;
                 SpawnCustomer();

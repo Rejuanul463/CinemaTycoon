@@ -880,6 +880,9 @@ namespace CinemaTycoon.Customers
         /// </summary>
         public bool NeedsArcade()
         {
+            var gm = GameManager.Instance;
+            if (gm?.Schedule != null && gm.Schedule.IsMoviePlayingOrImminent)
+                return false; // Skip arcade detour when a show is imminent so auditorium fills fast
             return UnityEngine.Random.value < preShowArcadeChance;
         }
 

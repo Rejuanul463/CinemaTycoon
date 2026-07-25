@@ -21,8 +21,22 @@ public class ChairLogicHandler : MonoBehaviour
 
     public void searchForChairs()
     {
+        chairs.Clear();
         OccupiedChairLogic[] chairsToSearch = GetComponentsInChildren<OccupiedChairLogic>(true);
         chairs.AddRange(chairsToSearch);
+
+        // Sort chairs front-to-back (furthest from ticket booth / lobby entrance first)
+        // so front rows fill up progressively before back rows.
+        var wp = CinemaTycoon.Core.CinemaWaypoints.Instance;
+        Vector3 referencePoint = wp != null && wp.TicketBooth != null ? wp.TicketBooth.position : Vector3.zero;
+
+        chairs.Sort((a, b) =>
+        {
+            if (a == null || b == null) return 0;
+            float distA = (a.transform.position - referencePoint).sqrMagnitude;
+            float distB = (b.transform.position - referencePoint).sqrMagnitude;
+            return distB.CompareTo(distA); // Descending distance = front row first
+        });
     }
 
     /// <summary>True if at least one chair currently accepts a reservation.</summary>
@@ -35,25 +49,23 @@ public class ChairLogicHandler : MonoBehaviour
     }
 
     /// <summary>
-    /// Reserves the free chair nearest to <paramref name="fromPosition"/> for the
-    /// given <paramref name="occupant"/>. Returns the chair, or null if none free.
+    /// Reserves the next free chair in front-to-back row order for the given
+    /// <paramref name="occupant"/>. Returns the chair, or null if none free.
     /// </summary>
     public OccupiedChairLogic ReserveNearestFree(Customer occupant, Vector3 fromPosition)
     {
         if (chairs == null || chairs.Count == 0) return null;
 
-        OccupiedChairLogic best = null;
-        float bestDist = float.MaxValue;
+        // Ensure chairs are sorted front-to-back if list was newly populated
         for (int i = 0; i < chairs.Count; i++)
         {
             var chair = chairs[i];
             if (chair == null || !chair.IsFree) continue;
-            float d = (chair.transform.position - fromPosition).sqrMagnitude;
-            if (d < bestDist) { best = chair; bestDist = d; }
+            chair.Reserve(occupant);
+            return chair;
         }
 
-        if (best != null) best.Reserve(occupant);
-        return best;
+        return null;
     }
 
     /// <summary>Returns a list of all chairs currently marked dirty.</summary>

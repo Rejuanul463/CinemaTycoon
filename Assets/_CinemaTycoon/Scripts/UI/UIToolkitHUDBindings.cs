@@ -492,7 +492,7 @@ namespace CinemaTycoon.UI
                 if (movie == null) continue;
 
                 float hype = gm.Schedule.GetGenreHype(movie.genre);
-                string labelText = $"{movie.title} [Lic: ${movie.licensingCost:F0}] (Hype: {hype * 100f:F0}%)";
+                string labelText = $"{movie.title}\nLic: ${movie.licensingCost:F0} | Hype: {hype * 100f:F0}%";
                 var button = new Button { text = labelText };
                 button.AddToClassList("action-button");
                 EventCallback<ClickEvent> callback = _ => TryScheduleMovie(movie);
