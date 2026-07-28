@@ -42,6 +42,10 @@ namespace CinemaTycoon.Events
         [Header("Spill")]
         [SerializeField] private float spillDuration = 30f;
         [SerializeField] private float unresolvedSpillPenalty = 15f;
+        [Tooltip("Designer-placed transforms where spills may spawn. Each entry must " +
+                 "point at a live GameObject in the scene at runtime — destroyed / " +
+                 "missing entries are skipped automatically, and if every entry is " +
+                 "invalid the spill falls back to the TicketBooth waypoint.")]
         [SerializeField] private Transform[] possibleSpillLocations;
         [Tooltip("Prefab spawned on the floor when a Spill triggers. Should have a " +
                  "flat quad mesh, a dirt/soda material, and the SpillDecal component " +
@@ -139,8 +143,8 @@ namespace CinemaTycoon.Events
 
         private void TriggerSpill()
         {
-            Vector3 rawLoc = possibleSpillLocations != null && possibleSpillLocations.Length > 0
-                ? possibleSpillLocations[UnityEngine.Random.Range(0, possibleSpillLocations.Length)].position
+            Vector3 rawLoc = TryGetRandomSpillLocation(out Vector3 candidateLoc)
+                ? candidateLoc
                 : CinemaWaypoints.Instance != null
                     ? CinemaWaypoints.Instance.TicketBooth.position
                     : Vector3.zero;
@@ -185,6 +189,44 @@ namespace CinemaTycoon.Events
 
             _activeEvents.Add(evt);
             OnEventTriggered?.Invoke(evt);
+        }
+
+        /// <summary>
+        /// Pick a random live Transform from <c>possibleSpillLocations</c>.
+        /// Returns false if the array is unset, empty, or every entry has been
+        /// destroyed — Unity keeps a "ghost" reference to a destroyed
+        /// <see cref="Transform"/> that compares equal to null via the overloaded
+        /// <c>==</c> operator but throws <c>MissingReferenceException</c> if you
+        /// touch its members directly, so the array-length check in the call site
+        /// is not enough. Two-pass (count, then pick) keeps the roll fair across
+        /// valid entries regardless of how many stale ones sit in the array.
+        /// </summary>
+        private bool TryGetRandomSpillLocation(out Vector3 location)
+        {
+            location = default;
+            if (possibleSpillLocations == null || possibleSpillLocations.Length == 0) return false;
+
+            int validCount = 0;
+            for (int i = 0; i < possibleSpillLocations.Length; i++)
+                if (possibleSpillLocations[i] != null) validCount++;
+
+            if (validCount == 0) return false;
+
+            int target = UnityEngine.Random.Range(0, validCount);
+            int seen = 0;
+            for (int i = 0; i < possibleSpillLocations.Length; i++)
+            {
+                var t = possibleSpillLocations[i];
+                if (t == null) continue;
+                if (seen == target)
+                {
+                    location = t.position;
+                    return true;
+                }
+                seen++;
+            }
+
+            return false; // unreachable — validCount > 0 guarantees a hit above
         }
 
         /// <summary>
