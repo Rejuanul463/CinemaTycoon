@@ -20,11 +20,9 @@ public class DoorOpenOrClose : MonoBehaviour
 
     private void Start()
     {
-        // Store initial (closed) rotations
         frame1ClosedRotation = doorFrame1.localRotation;
         frame2ClosedRotation = doorFrame2.localRotation;
 
-        // Calculate open rotations
         frame1OpenRotation = frame1ClosedRotation * Quaternion.Euler(0f, openAngle, 0f);
         frame2OpenRotation = frame2ClosedRotation * Quaternion.Euler(0f, -openAngle, 0f);
     }

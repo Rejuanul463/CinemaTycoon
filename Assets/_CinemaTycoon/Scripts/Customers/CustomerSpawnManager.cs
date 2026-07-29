@@ -8,8 +8,7 @@ namespace CinemaTycoon.Customers
     public class CustomerSpawnManager : MonoBehaviour
     {
         [Header("Spawn Settings")]
-        [Tooltip("List of customer prefabs. One is picked at random on each spawn. " +
-                 "Every entry must have a Customer component.")]
+        [Tooltip("List of customer prefabs. One is picked at random on each spawn.")]
         [SerializeField] private GameObject[] customerPrefabs;
         [SerializeField] private float spawnInterval = 4f;
         [SerializeField] private int maxConcurrentCustomers = 30;
@@ -32,8 +31,6 @@ namespace CinemaTycoon.Customers
             var gm = GameManager.Instance;
             if (gm == null || gm.Economy == null) return;
 
-            // Showtime Rush: when a movie is playing or about to start, accelerate
-            // spawn rate and expand concurrent capacity so the auditorium fills up!
             bool isShowtime = gm.Schedule != null && gm.Schedule.IsMoviePlayingOrImminent;
             float speedMult = isShowtime ? 2.5f : 1.0f;
             float interval = (spawnInterval / speedMult) / gm.Economy.MarketingMultiplier;
@@ -85,7 +82,6 @@ namespace CinemaTycoon.Customers
         public void ReleaseQueueIndex(Customer c)
         {
             _queue.Remove(c);
-            // Re-index remaining queued customers so they shuffle forward.
             for (int i = 0; i < _queue.Count; i++)
                 _queue[i].SetQueueIndex(i);
         }

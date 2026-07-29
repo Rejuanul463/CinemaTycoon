@@ -46,19 +46,12 @@ namespace CinemaTycoon.Events
                 return;
             }
 
-            // Capture the prefab's authored scale so SetCleaningProgress can
-            // shrink relative to it (1.0 = full size, 0.05 = tiny residue).
             _originalScale = transform.localScale;
-
-            // Instantiate the material so multiple spills / cleanup don't share state.
             _materialInstance = _renderer.material;
             SetAlpha(0f);
 
             if (alignToFloor)
             {
-                // Keep the decal glued to the floor regardless of the spawn
-                // transform's rotation. We lock yaw so the texture isn't spun
-                // randomly; pitch is forced to -90° (lying flat).
                 Vector3 euler = transform.eulerAngles;
                 transform.rotation = Quaternion.Euler(90f, euler.y, 0f);
             }
@@ -156,8 +149,7 @@ namespace CinemaTycoon.Events
         {
             if (_materialInstance == null) return;
 
-            // URP Lit uses _BaseColor; built-in / Unlit use _Color. Try both so
-            // the decal works regardless of which shader the prefab uses.
+            // URP Lit uses _BaseColor; built-in / Unlit use _Color. Try both.
             if (_materialInstance.HasProperty(BaseColorId))
             {
                 Color c = _materialInstance.GetColor(BaseColorId);
@@ -174,7 +166,6 @@ namespace CinemaTycoon.Events
 
         private void OnDestroy()
         {
-            // Clean up the instanced material so we don't leak it in the editor.
             if (_materialInstance != null)
             {
                 if (Application.isPlaying) Destroy(_materialInstance);

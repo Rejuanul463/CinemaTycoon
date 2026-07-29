@@ -60,7 +60,6 @@ namespace CinemaTycoon.Economy
         public IReadOnlyList<Transaction> Transactions => _transactions;
         public IReadOnlyList<UpgradeData> AvailableUpgrades => availableUpgrades;
 
-        // Static events — HUD/SceneFlow subscribe without holding a reference.
         public static event Action<float> OnBalanceChanged;
         public static event Action<Transaction> OnTransactionLogged;
         public static event Action<UpgradeType> OnUpgradePurchased;
@@ -70,10 +69,6 @@ namespace CinemaTycoon.Economy
             _balance = startingBalance;
             OnBalanceChanged?.Invoke(_balance);
 
-            // Fallback: if no UpgradeData assets were wired in the Inspector,
-            // auto-discover them from any "Resources" folder at runtime. This
-            // lets the game ship with working upgrades without requiring the
-            // EconomyManager Inspector to reference each .asset explicitly.
             if (availableUpgrades == null || availableUpgrades.Count == 0)
             {
                 var loaded = Resources.LoadAll<UpgradeData>("");
@@ -205,7 +200,6 @@ namespace CinemaTycoon.Economy
             OnTransactionLogged?.Invoke(t);
         }
 
-        // Dev-only hook used by CheatManager. Never called from gameplay code.
         public void DevInjectFunds(float amount) => AddIncome(amount, "Cheat: money injection");
     }
 }

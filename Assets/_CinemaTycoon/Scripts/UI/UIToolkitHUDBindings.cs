@@ -21,7 +21,6 @@ namespace CinemaTycoon.UI
 
         private VisualElement _root;
 
-        // Debug: confirm pointer events reach UI Toolkit at runtime
         private bool _debugPointerHooked;
 
         // Main Panels
@@ -71,9 +70,6 @@ namespace CinemaTycoon.UI
         private VisualElement _notificationContainer;
         private Label _lastTicketLabel;
 
-        // Stored ClickEvent delegates so they can be unregistered in OnDisable.
-        // Using lambdas directly with RegisterCallback would leak subscriptions across
-        // enable/disable cycles because the delegate reference cannot be recovered.
         private EventCallback<ClickEvent> _hireCashierCallback;
         private EventCallback<ClickEvent> _hireJanitorCallback;
         private EventCallback<ClickEvent> _hireGuardCallback;
@@ -96,7 +92,6 @@ namespace CinemaTycoon.UI
         private EventCallback<ClickEvent> _moviesCategoryCallback;
         private EventCallback<ClickEvent> _upgradesCategoryCallback;
         private ManagementCategory _openCategory = ManagementCategory.None;
-        // Cached label text without the disclosure glyph, so toggling doesn't accumulate ▸/▾.
         private const string StaffCategoryLabel   = "STAFF";
         private const string MoviesCategoryLabel  = "MOVIES";
         private const string UpgradesCategoryLabel = "UPGRADES";
@@ -120,11 +115,10 @@ namespace CinemaTycoon.UI
                 return;
             }
 
-            // Diagnostic: log what element is receiving pointer input
             _root.RegisterCallback<PointerDownEvent>(OnRootPointerDown);
             _root.RegisterCallback<PointerUpEvent>(OnRootPointerUp);
 
-            // Apply USS stylesheet programmatically (avoids UXML <Style> tag parsing issues)
+            // Apply USS stylesheet programmatically
             if (hudStyleSheet != null)
             {
                 _root.styleSheets.Add(hudStyleSheet);
@@ -134,7 +128,6 @@ namespace CinemaTycoon.UI
                 Debug.LogWarning("[UIToolkitHUDBindings] hudStyleSheet is not assigned in the Inspector. UI will be unstyled.");
             }
 
-            // Query Main Menu panels & buttons
             _mainMenuPanel = _root.Q<VisualElement>("main-menu-panel");
             _gameplayHud = _root.Q<VisualElement>("gameplay-hud");
             _startButton = _root.Q<Button>("start-button");
@@ -144,7 +137,6 @@ namespace CinemaTycoon.UI
             if (_startButton != null) _startButton.clicked += HandleStartClicked;
             if (_quitButton != null) _quitButton.clicked += HandleQuitClicked;
 
-            // Query Sidebar buttons
             _hireCashierButton  = _root.Q<Button>("hire-cashier-button");
             _hireJanitorButton  = _root.Q<Button>("hire-janitor-button");
             _hireGuardButton    = _root.Q<Button>("hire-guard-button");
@@ -154,7 +146,6 @@ namespace CinemaTycoon.UI
             _buyMarketingButton = _root.Q<Button>("buy-marketing-button");
             _movieButtonsContainer = _root.Q<VisualElement>("movie-buttons-container");
 
-            // Query Accordion Category buttons + their collapsible content panels.
             _staffCategoryButton    = _root.Q<Button>("staff-category-button");
             _moviesCategoryButton   = _root.Q<Button>("movies-category-button");
             _upgradesCategoryButton = _root.Q<Button>("upgrades-category-button");
@@ -162,7 +153,7 @@ namespace CinemaTycoon.UI
             _moviesCategoryContent   = _root.Q<VisualElement>("movies-category-content");
             _upgradesCategoryContent = _root.Q<VisualElement>("upgrades-category-content");
 
-            // Wire category-button clicks (stored delegates for proper teardown).
+            // Wire category-button clicks
             if (_staffCategoryButton != null)
             {
                 _staffCategoryCallback = _ => ToggleCategory(ManagementCategory.Staff);
@@ -179,7 +170,6 @@ namespace CinemaTycoon.UI
                 _upgradesCategoryButton.RegisterCallback<ClickEvent>(_upgradesCategoryCallback);
             }
 
-            // Initialize all categories as collapsed.
             ApplyCategoryState();
 
             Debug.Log($"[HUD] Button query results — " +
@@ -191,8 +181,7 @@ namespace CinemaTycoon.UI
                       $"Seats:{_buySeatsButton != null} " +
                       $"Marketing:{_buyMarketingButton != null}");
 
-            // Wire Sidebar clicks using ClickEvent (Button.clicked is unreliable in this runtime).
-            // Store each delegate so it can be Unregistered in OnDisable.
+            // Wire Sidebar clicks using ClickEvent
             if (_hireCashierButton != null)
             {
                 _hireCashierCallback = _ =>
@@ -263,33 +252,27 @@ namespace CinemaTycoon.UI
                 _buyMarketingButton.RegisterCallback<ClickEvent>(_buyMarketingCallback);
             }
 
-            // Query Fullscreen Overlays
             _pauseOverlay = _root.Q<VisualElement>("pause-overlay");
             _settingsOverlay = _root.Q<VisualElement>("settings-overlay");
             _gameoverOverlay = _root.Q<VisualElement>("gameover-overlay");
 
-            // Query Pause Overlay buttons
             _resumeButton = _root.Q<Button>("resume-button");
             _restartButton = _root.Q<Button>("restart-button");
             _settingsButton = _root.Q<Button>("settings-button");
             _exitButton = _root.Q<Button>("exit-button");
 
-            // Wire Pause click listeners
             if (_resumeButton != null) _resumeButton.clicked += ResumeGame;
             if (_restartButton != null) _restartButton.clicked += RestartGame;
             if (_settingsButton != null) _settingsButton.clicked += OpenSettingsMenu;
             if (_exitButton != null) _exitButton.clicked += ExitToMainMenu;
 
-            // Query Settings buttons
             _settingsBackButton = _root.Q<Button>("settings-back-button");
             if (_settingsBackButton != null) _settingsBackButton.clicked += CloseSettingsMenu;
 
-            // Query Game Over elements
             _gameoverReasonLabel = _root.Q<Label>("gameover-reason-label");
             _gameoverRestartButton = _root.Q<Button>("gameover-restart-button");
             _gameoverExitButton = _root.Q<Button>("gameover-exit-button");
 
-            // Wire Game Over click listeners
             if (_gameoverRestartButton != null) _gameoverRestartButton.clicked += RestartGame;
             if (_gameoverExitButton != null) _gameoverExitButton.clicked += ExitToMainMenu;
 
@@ -303,7 +286,6 @@ namespace CinemaTycoon.UI
             _notificationContainer = _root.Q<VisualElement>("notification-container");
             _lastTicketLabel = _root.Q<Label>("last-ticket-label");
 
-            // Subscribe to static core events
             EconomyManager.OnBalanceChanged += HandleBalanceChanged;
             GameManager.OnCinemaRatingChanged += HandleRatingChanged;
             ScheduleManager.OnShowStarted += HandleShowStarted;
@@ -380,8 +362,6 @@ namespace CinemaTycoon.UI
             FlyCameraController.OnCursorLockChanged -= HandleCursorLockChanged;
         }
 
-        // (root pointer instrumentation removed)
-
         private void OnRootPointerDown(PointerDownEvent evt)
         {
             string target = evt.target != null ? evt.target.ToString() : "null";
@@ -410,7 +390,6 @@ namespace CinemaTycoon.UI
 
             if (isMenuScene)
             {
-                // Main Menu Scene: Freeze simulation until Start Game is clicked
                 Time.timeScale = 0f;
                 _isGameStarted = false;
 
@@ -425,7 +404,6 @@ namespace CinemaTycoon.UI
             }
             else
             {
-                // Gameplay Scene: Enter gameplay directly
                 Time.timeScale = 1f;
                 _isGameStarted = true;
 
@@ -491,8 +469,7 @@ namespace CinemaTycoon.UI
         {
             if (_movieButtonsContainer == null) return;
 
-            // Unregister and clear previously registered movie button callbacks so
-            // repeated population cycles don't accumulate stale subscriptions.
+            // Unregister and clear previously registered movie button callbacks
             foreach (var (button, callback) in _movieButtonCallbacks)
             {
                 if (button != null && callback != null)
@@ -650,7 +627,6 @@ namespace CinemaTycoon.UI
 
             if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.Flex;
 
-            // Freeze camera in place and unlock cursor for UI interaction
             var cam = FindFirstObjectByType<FlyCameraController>();
             if (cam != null)
                 cam.SetState(FlyCameraController.CameraState.CursorFree);
@@ -664,7 +640,6 @@ namespace CinemaTycoon.UI
             if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.None;
             if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.None;
 
-            // Lock cursor and return to flying
             var cam = FindFirstObjectByType<FlyCameraController>();
             if (cam != null)
             {
@@ -725,7 +700,6 @@ namespace CinemaTycoon.UI
             if (_gameoverOverlay != null) _gameoverOverlay.style.display = DisplayStyle.Flex;
             if (_gameoverReasonLabel != null) _gameoverReasonLabel.text = reason;
 
-            // Unlock cursor for menu clicks
             var cam = FindFirstObjectByType<FlyCameraController>();
             if (cam != null)
             {
@@ -737,14 +711,11 @@ namespace CinemaTycoon.UI
         {
             if (_balanceLabel != null) _balanceLabel.text = $"Balance: ${balance:F0}";
 
-            // Update button interactivity based on affordability
             UpdateInteractivity(balance);
         }
 
         private void UpdateInteractivity(float balance)
         {
-            // Hire-button affordability driven by StaffRoleData.hireCost so the
-            // UI never drifts from the configured role data.
             var gm = GameManager.Instance;
             if (gm == null || gm.Staff == null) return;
 
@@ -770,7 +741,6 @@ namespace CinemaTycoon.UI
 
             if (gm.Economy == null) return;
 
-            // Upgrades affordability & purchased verification
             UpdateUpgradeButton(_buyPopcornButton, UpgradeType.PremiumPopcorn, balance);
             UpdateUpgradeButton(_buyCashierButton, UpgradeType.FasterCashier, balance);
             UpdateUpgradeButton(_buySeatsButton, UpgradeType.ComfySeats, balance);
@@ -860,17 +830,14 @@ namespace CinemaTycoon.UI
         {
             if (notificationTemplate == null || _notificationContainer == null) return;
 
-            // Instantiate UXML template for the event popup
             VisualElement popup = notificationTemplate.Instantiate();
             var titleText = popup.Q<Label>("event-title");
             var descText = popup.Q<Label>("event-desc");
             if (titleText != null) titleText.text = evt.Title;
             if (descText != null) descText.text = evt.Description;
 
-            // Associate the visual element with the event instance
             popup.userData = evt;
 
-            // Apply VIP Visit styling if it is a VIPVisit event
             var popupRoot = popup.Q<VisualElement>("event-popup-root");
             if (popupRoot != null && evt.Type == GameEventType.VIPVisit)
             {

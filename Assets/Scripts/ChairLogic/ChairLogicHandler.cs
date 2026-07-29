@@ -25,8 +25,6 @@ public class ChairLogicHandler : MonoBehaviour
         OccupiedChairLogic[] chairsToSearch = GetComponentsInChildren<OccupiedChairLogic>(true);
         chairs.AddRange(chairsToSearch);
 
-        // Sort chairs front-to-back (furthest from ticket booth / lobby entrance first)
-        // so front rows fill up progressively before back rows.
         var wp = CinemaTycoon.Core.CinemaWaypoints.Instance;
         Vector3 referencePoint = wp != null && wp.TicketBooth != null ? wp.TicketBooth.position : Vector3.zero;
 
@@ -56,7 +54,6 @@ public class ChairLogicHandler : MonoBehaviour
     {
         if (chairs == null || chairs.Count == 0) return null;
 
-        // Ensure chairs are sorted front-to-back if list was newly populated
         for (int i = 0; i < chairs.Count; i++)
         {
             var chair = chairs[i];

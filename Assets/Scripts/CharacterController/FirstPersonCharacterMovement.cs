@@ -15,13 +15,12 @@ public class FirstPersonCharacterMovement : MonoBehaviour
     public float lookSensitivity = 50f;
     [SerializeField] private Transform cameraTransform;
     private float xRotation;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+
     void Start()
     {
         controller = GetComponent<CharacterController>();
     }
 
-    // Update is called once per frame
     void Update()
     {
         CharacterMovement();

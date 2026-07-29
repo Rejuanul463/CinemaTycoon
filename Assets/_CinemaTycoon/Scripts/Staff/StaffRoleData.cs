@@ -15,10 +15,6 @@ namespace CinemaTycoon.Staff
         public float taskDuration = 4f;
     }
 
-    /// <summary>
-    /// Lightweight POCO task envelope. Priority is informational — StaffManager
-    /// currently processes FIFO, but the field is here for future expansion.
-    /// </summary>
     public class StaffTask
     {
         public Vector3 TargetPosition;

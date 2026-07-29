@@ -22,7 +22,7 @@ namespace CinemaTycoon.Core
         [Header("Staff Stations")]
         [SerializeField] private Transform cashierStation;
         [Tooltip("Dedicated, navmesh-reachable spot the Cashier paths to and idles at " +
-                 "while on duty. Place this NEAR the ticket booth but in an open, " +
+                 "while on duty. Place NEAR the ticket booth but in an open, " +
                  "obstacle-free area — do NOT point it at the booth transform itself " +
                  "(the booth is often surrounded by colliders that block the agent). " +
                  "If left unassigned, falls back to Cashier Station.")]
@@ -32,19 +32,16 @@ namespace CinemaTycoon.Core
 
         [Header("Bathrooms (one per gender — single-occupancy)")]
         [Tooltip("Where female customers walk to and stand while using the bathroom. " +
-                 "Leave unassigned to disable the female bathroom entirely (female " +
-                 "customers will skip the bathroom detour).")]
+                 "Leave unassigned to disable the female bathroom entirely.")]
         [SerializeField] private Transform femaleBathroom;
         [Tooltip("Where male customers walk to and stand while using the bathroom. " +
-                 "Leave unassigned to disable the male bathroom entirely (male " +
-                 "customers will skip the bathroom detour).")]
+                 "Leave unassigned to disable the male bathroom entirely.")]
         [SerializeField] private Transform maleBathroom;
 
         [Header("Arcade Machines (optional — not occupancy-limited)")]
         [Tooltip("Where customers walk to and stand when they 'play' an arcade game. " +
-                 "Each customer picks one at random on entry. Unlike the bathroom, " +
-                 "arcades are NOT single-occupancy — multiple customers can stand at " +
-                 "the same machine at once. Leave the list empty to disable the " +
+                 "Each customer picks one at random on entry. Multiple customers can " +
+                 "stand at the same machine. Leave the list empty to disable the " +
                  "arcade detour entirely.")]
         [SerializeField] private Transform[] arcadeMachines;
 
@@ -84,7 +81,7 @@ namespace CinemaTycoon.Core
                 if (pick == 0) return arcadeMachines[i];
                 pick--;
             }
-            return null; // unreachable
+            return null;
         }
 
         public int QueueCapacity => queuePoints != null ? queuePoints.Length : 0;

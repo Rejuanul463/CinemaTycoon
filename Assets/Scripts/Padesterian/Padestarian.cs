@@ -15,7 +15,7 @@ public class Padestarian : MonoBehaviour
 
     private bool isHoldingPopcorn;
     [SerializeField] private GameObject popcornPrefab;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+
     void Start()
     {
         characterPrefabs[Random.Range(0, characterPrefabs.Length)].SetActive(true);
@@ -25,7 +25,6 @@ public class Padestarian : MonoBehaviour
         agent.SetDestination(positions[prevState].transform.position);
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (agent.remainingDistance > agent.stoppingDistance)

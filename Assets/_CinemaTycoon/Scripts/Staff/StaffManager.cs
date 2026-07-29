@@ -15,8 +15,7 @@ namespace CinemaTycoon.Staff
         [SerializeField] private StaffRoleData cashierConfig;
         [SerializeField] private StaffRoleData janitorConfig;
         [SerializeField] private StaffRoleData guardConfig;
-        [Tooltip("List of staff prefabs. One is picked at random on each hire. " +
-                 "Every entry must have a Staff component.")]
+        [Tooltip("List of staff prefabs. One is picked at random on each hire.")]
         [SerializeField] private GameObject[] staffPrefabs;
 
         [Header("Janitor Idle Cleaning")]
@@ -66,7 +65,6 @@ namespace CinemaTycoon.Staff
 
         private void Update()
         {
-            // Dispatch queued tasks to nearest idle staff of the required role.
             while (_pendingTasks.Count > 0)
             {
                 var task = _pendingTasks.Dequeue();
@@ -82,7 +80,6 @@ namespace CinemaTycoon.Staff
                 }
             }
 
-            // Cashier presence gate: tell the front-of-queue customer they can advance.
             var gm = GameManager.Instance;
             if (gm != null && gm.Spawner != null)
             {
@@ -91,7 +88,6 @@ namespace CinemaTycoon.Staff
                 if (front != null) front.NotifyCashierReady(cashierOnDuty);
             }
 
-            // Idle Janitors passively clean the hall.
             _idleCleanTimer += Time.deltaTime;
             if (_idleCleanTimer >= 1f)
             {
@@ -216,9 +212,6 @@ namespace CinemaTycoon.Staff
             if (wp == null) return Vector3.zero;
             return role switch
             {
-                // Cashier prefers the dedicated, reachable CashierWorkPoint (placed near
-                // the booth but off the obstacle cluster) so it doesn't fight the booth's
-                // colliders. Falls back to CashierStation if the work point is unassigned.
                 StaffRole.Cashier => ResolveCashierHome(wp),
                 StaffRole.Janitor => wp.JanitorStation != null ? wp.JanitorStation.position : Vector3.zero,
                 StaffRole.Guard   => wp.GuardStation != null ? wp.GuardStation.position : Vector3.zero,

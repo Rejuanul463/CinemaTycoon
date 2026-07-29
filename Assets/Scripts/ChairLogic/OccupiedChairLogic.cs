@@ -7,14 +7,11 @@ public class OccupiedChairLogic : MonoBehaviour
     private int randomIndex;
 
     [Header("Approach Point")]
-    [Tooltip("Local-space offset from the chair where a customer should stand before " +
-             "sitting. Default is behind the chair (toward the row's entry aisle). " +
-             "Increase the magnitude if your aisle is wider; flip the sign if your " +
-             "chairs face the opposite way.")]
+        [Tooltip("Local-space offset from the chair where a customer should stand before " +
+                 "sitting. Default is behind the chair (toward the row's entry aisle).")]
     [SerializeField] private Vector3 approachOffset = new Vector3(0f, 0f, -0.6f);
 
-    [Tooltip("Optional explicit approach Transform. If assigned, overrides " +
-             "approachOffset (use a child empty GameObject placed in the aisle).")]
+        [Tooltip("Optional explicit approach Transform. If assigned, overrides approachOffset.")]
     [SerializeField] private Transform approachPoint;
 
     [Header("Trash & Cleanliness")]
@@ -94,7 +91,6 @@ public class OccupiedChairLogic : MonoBehaviour
             characterPrefabs[randomIndex].SetActive(false);
         IsOccupied = false;
 
-        // Roll chance for customer to leave trash
         if (Random.value < trashChance)
         {
             SetDirty(true);

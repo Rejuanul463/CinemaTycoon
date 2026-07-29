@@ -22,19 +22,12 @@ namespace CinemaTycoon.Customers
 
         [Header("Mid-Show Trigger")]
         [Tooltip("Per-second chance a seated customer will need the bathroom. " +
-                 "Keep this small — it is rolled every pollInterval for every " +
-                 "seated customer, so the effective per-customer rate is roughly " +
-                 "perSecondNeedChance * (show duration in seconds).")]
+                 "Effective per-customer rate is roughly perSecondNeedChance * show duration.")]
         [SerializeField, Range(0f, 0.5f)] private float perSecondNeedChance = 0.03f;
 
-        [Tooltip("Seconds between polls. Lower = more responsive but more work " +
-                 "per frame. 1s is plenty for a tycoon.")]
+        [Tooltip("Seconds between polls. Lower = more responsive but more work per frame.")]
         [SerializeField] private float pollInterval = 1f;
 
-        // Reference to the customer currently occupying each bathroom. The
-        // reservation is held by the customer for the entire trip
-        // (GoingToBathroom → UsingBathroom → ReturningFromBathroom) and
-        // released by Customer.ReleaseBathroom() at the end.
         private Customer _femaleOccupant;
         private Customer _maleOccupant;
 
@@ -112,10 +105,6 @@ namespace CinemaTycoon.Customers
 
         private void Update()
         {
-            // Per-second roll for seated customers to need the bathroom. Uses
-            // unscaled-safe Time.deltaTime: when the game is paused
-            // (Time.timeScale = 0) deltaTime is 0, so no roll happens and
-            // existing trips are not interrupted.
             _pollTimer += Time.deltaTime;
             if (_pollTimer < pollInterval) return;
             _pollTimer = 0f;
@@ -124,20 +113,12 @@ namespace CinemaTycoon.Customers
             var spawner = gm != null ? gm.Spawner : null;
             if (spawner == null) return;
 
-            // Snapshot iteration via a small list: TryGoToBathroom may
-            // transition the customer (state change) but does not despawn
-            // them, so the underlying HashSet is not mutated. The local
-            // copy also protects us if a future change does remove from the
-            // set during the trip.
             var active = new System.Collections.Generic.List<Customer>(spawner.ActiveCustomers);
             for (int i = 0; i < active.Count; i++)
             {
                 var c = active[i];
                 if (c == null) continue;
                 if (!c.IsSeated) continue;
-                // Skip if the customer's bathroom is already full this tick —
-                // avoids needlessly waking the seated model + re-sitting
-                // them on a guaranteed-fail attempt.
                 if (IsOccupiedFor(c.Gender)) continue;
                 if (Random.value < perSecondNeedChance)
                     c.TryGoToBathroom(fromSeat: true);

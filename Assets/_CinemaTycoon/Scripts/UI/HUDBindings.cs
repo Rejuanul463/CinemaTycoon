@@ -9,26 +9,6 @@ using CinemaTycoon.Events;
 
 namespace CinemaTycoon.UI
 {
-    /// <summary>
-    /// Legacy uGUI HUD plumbing. Subscribes to manager events and updates UI elements.
-    ///
-    /// ⚠️ OBSOLETE — superseded by <see cref="UIToolkitHUDBindings"/>, which uses
-    /// UI Toolkit (UXML/USS) and covers the same events plus the pause / settings /
-    /// game-over overlays. This class is retained only as a reference and to keep
-    /// legacy prefabs compiling. Do NOT add new HUD code here; use
-    /// UIToolkitHUDBindings instead. Remove this file once no scene references it.
-    ///
-    /// Event → HUD element mapping (kept for reference):
-    ///   EconomyManager.OnBalanceChanged      → balanceText
-    ///   GameManager.OnCinemaRatingChanged    → ratingText + ratingSlider
-    ///   ScheduleManager.OnShowStarted/Ended  → nowPlayingText
-    ///   ScheduleManager.OnCleanlinessChanged → cleanlinessSlider
-    ///   StaffManager.OnStaffHired            → staffCountText
-    ///   Customer.OnTicketPurchased           → lastTicketText
-    ///   EventManager.OnEventTriggered        → eventNotification (instantiated prefab)
-    ///   EventManager.OnEventResolved/Expired → (fade-out hook)
-    ///   GameManager.OnGameOver               → handled by SceneFlowManager.gameOverPanel
-    /// </summary>
     [System.Obsolete("Legacy uGUI HUD. Use CinemaTycoon.UI.UIToolkitHUDBindings (UI Toolkit) instead.")]
     public class HUDBindings : MonoBehaviour
     {
@@ -72,8 +52,6 @@ namespace CinemaTycoon.UI
 
         private void Start()
         {
-            // Pull current state on first frame — events may have fired before subscribe
-            // in edge cases; this guarantees the HUD isn't stale on scene load.
             var gm = GameManager.Instance;
             if (gm != null)
             {

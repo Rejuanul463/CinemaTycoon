@@ -44,13 +44,8 @@ namespace CinemaTycoon.Customers
         {
             if (!Customer.Agent.pathPending && Customer.Agent.remainingDistance < 1.5f)
             {
-                // Pre-queue arcade: a small chance to play a random arcade
-                // game before joining the queue, mimicking the "kill time
-                // before the movie" behavior. NeedsArcade() is a fresh roll
-                // per customer; TryGoToArcade() is a no-op when no machines
-                // are assigned, so the call is safe even with an empty list.
                 if (Customer.NeedsArcade() && Customer.TryGoToArcade())
-                    return; // TryGoToArcade already transitioned the state
+                    return;
 
                 GoTo(CustomerStateType.Queuing);
             }
@@ -76,8 +71,6 @@ namespace CinemaTycoon.Customers
             var wp = CinemaWaypoints.Instance;
             if (gm == null || wp == null) return;
 
-            // Satisfaction drains while waiting. FasterCashier upgrade softens this.
-            // Presence of a Guard on duty reduces queue frustration by 25%.
             float patience = Customer.QueuePatiencePerSecond;
             if (gm.Staff != null && gm.Staff.HasRoleOnDuty(StaffRole.Guard))
                 patience *= 0.75f;
@@ -90,11 +83,9 @@ namespace CinemaTycoon.Customers
                 return;
             }
 
-            // Re-path if our queue index changed (someone ahead left).
             Customer.Agent.SetDestination(
                 wp.GetQueuePoint(Customer.QueueIndex).position);
 
-            // Front of queue + cashier on duty → advance to purchase.
             if (Customer.IsAtFrontOfQueue && Customer.CashierReady)
                 GoTo(CustomerStateType.Purchasing);
         }
@@ -120,26 +111,20 @@ namespace CinemaTycoon.Customers
             var gm = GameManager.Instance;
             if (gm == null || gm.Schedule == null) return;
 
-            // No movie → no point buying popcorn. Bail out as unsatisfied.
             if (!gm.Schedule.IsMoviePlayingOrImminent)
             {
                 GoTo(CustomerStateType.Unsatisfied);
                 return;
             }
 
-            // Popcorn detour before the bathroom: the natural order is
-            // ticket → optional popcorn → optional bathroom → seat.
             if (Customer.WantsPopcorn() && CinemaWaypoints.Instance.PopcornStand != null)
             {
                 GoTo(CustomerStateType.Popcorn);
                 return;
             }
 
-            // No popcorn — pre-show bathroom chance is rolled here for the
-            // "ticket only" path. The "ticket + popcorn" path is handled in
-            // PopcornState.Tick so the same chance applies to both.
             if (Customer.NeedsBathroom() && Customer.TryGoToBathroom(fromSeat: false))
-                return; // TryGoToBathroom already transitioned the state
+                return;
 
             GoTo(CustomerStateType.Watching);
         }
@@ -161,8 +146,6 @@ namespace CinemaTycoon.Customers
             var wp = CinemaWaypoints.Instance;
             if (wp == null || wp.PopcornStand == null)
             {
-                // Defensive: PurchasingState already gates on this, but if a
-                // designer wires the state in manually we still bail safely.
                 GoTo(CustomerStateType.Watching);
                 return;
             }
@@ -176,12 +159,8 @@ namespace CinemaTycoon.Customers
             if (Customer.Agent.pathPending || Customer.Agent.remainingDistance >= 1.0f) return;
             Customer.AttemptPopcornPurchase();
 
-            // Pre-show bathroom detour for the "ticket + popcorn" path.
-            // NeedsBathroom() is a fresh roll — same chance as the ticket-only
-            // path, so a customer buying popcorn is no more or less likely to
-            // need the bathroom than one who didn't.
             if (Customer.NeedsBathroom() && Customer.TryGoToBathroom(fromSeat: false))
-                return; // TryGoToBathroom already transitioned the state
+                return;
 
             GoTo(CustomerStateType.Watching);
         }
@@ -225,10 +204,6 @@ namespace CinemaTycoon.Customers
                 return;
             }
 
-            // Arrived at the reserved chair's approach point: sit down (this disables
-            // the customer GO, so Tick will not run again until the show ends and
-            // wakes the customer). hasPath guards against an off-mesh approach point
-            // (no path → remainingDistance is 0 but we must not teleport-sit).
             if (!Customer.Agent.pathPending
                 && Customer.Agent.hasPath
                 && Customer.Agent.remainingDistance < Customer.ChairArrivalDistance)
@@ -245,9 +220,6 @@ namespace CinemaTycoon.Customers
 
         public override void Enter()
         {
-            // Idempotent — releases a held bathroom slot if the customer bailed
-            // out mid-trip (show ended while walking to / using the bathroom).
-            // No-op for customers who never entered a bathroom.
             Customer.ReleaseBathroom();
             Customer.Agent.isStopped = false;
             Customer.Agent.SetDestination(CinemaWaypoints.Instance.ExitPoint.position);
@@ -268,7 +240,6 @@ namespace CinemaTycoon.Customers
 
         public override void Enter()
         {
-            // Idempotent — same reasoning as LeavingState.Enter.
             Customer.ReleaseBathroom();
             Customer.Agent.isStopped = false;
             Customer.Agent.SetDestination(CinemaWaypoints.Instance.ExitPoint.position);
@@ -302,10 +273,6 @@ namespace CinemaTycoon.Customers
             var bm = BathroomManager.Instance;
             if (bm == null) { GoTo(CustomerStateType.Watching); return; }
 
-            // Reservation was made before transition; look it up via the
-            // customer's gender. If the slot was lost (e.g. another script
-            // released it) fall back to the matching waypoint so the customer
-            // still walks somewhere sensible rather than standing still.
             var wp = CinemaWaypoints.Instance;
             Transform target = null;
             if (Customer.Gender == Gender.Female)
@@ -318,8 +285,6 @@ namespace CinemaTycoon.Customers
             }
             if (target == null)
             {
-                // No bathroom waypoint assigned for this gender — give up the
-                // slot (if we still have it) and head to the chair.
                 Customer.ReleaseBathroom();
                 GoTo(CustomerStateType.Watching);
                 return;
@@ -334,8 +299,6 @@ namespace CinemaTycoon.Customers
             if (Customer.Agent.pathPending) return;
             if (Customer.Agent.remainingDistance < 1.0f)
             {
-                // Arrived at the bathroom. UsingBathroomState will tick down
-                // the in-bathroom timer before the customer walks back.
                 GoTo(CustomerStateType.UsingBathroom);
             }
         }
@@ -385,18 +348,12 @@ namespace CinemaTycoon.Customers
             var chair = Customer.ReservedChair;
             var gm = GameManager.Instance;
 
-            // Pre-show customers don't have a reserved chair yet — they
-            // just head to the hall like any first-time customer. If the
-            // movie has already started by the time they return they can
-            // still find a free chair via WatchingState.
             if (chair == null)
             {
                 GoTo(CustomerStateType.Watching);
                 return;
             }
 
-            // Show ended while we were in the bathroom. Bail out and leave;
-            // we won't find a free chair anyway.
             if (gm?.Schedule != null
                 && !gm.Schedule.IsMoviePlaying
                 && !gm.Schedule.IsMoviePlayingOrImminent)
@@ -413,11 +370,6 @@ namespace CinemaTycoon.Customers
         {
             if (Customer.Agent.pathPending) return;
 
-            // Re-sit when we reach the chair's approach point. The customer
-            // re-Occupies the same chair (its reservation is still held) and
-            // re-subscribes to OnShowEnded so the show-end wake-up still
-            // fires. SitOnChair also re-disables the GameObject, so the
-            // ReturningFromBathroomState stops ticking until the next event.
             if (Customer.Agent.remainingDistance < Customer.ChairArrivalDistance
                 && Customer.Agent.hasPath)
             {
@@ -450,7 +402,6 @@ namespace CinemaTycoon.Customers
             var arcade = wp != null ? wp.PickRandomArcade() : null;
             if (arcade == null)
             {
-                // No arcades available — skip the detour and join the queue.
                 GoTo(CustomerStateType.Queuing);
                 return;
             }
@@ -513,8 +464,7 @@ namespace CinemaTycoon.Customers
         [Tooltip("Disabled-by-default child GameObject (e.g. FullPopcornTubM) that " +
                  "is toggled on when the customer buys popcorn and off when they " +
                  "leave. Leave unassigned and Awake will auto-find a child named " +
-                 "'FullPopcornTubM' (case-insensitive) so prefabs that already " +
-                 "have the prop parented work with zero inspector wiring.")]
+                 "'FullPopcornTubM' (case-insensitive).")]
         [SerializeField] private GameObject popcornProp;
 
         [Header("Bathroom")]
@@ -536,8 +486,8 @@ namespace CinemaTycoon.Customers
                  "Mimics the 'kill time before the movie' behavior. Rolls once " +
                  "per entry; if no arcades are assigned the detour is skipped.")]
         [SerializeField, Range(0f, 1f)] private float preShowArcadeChance = 0.2f;
+        [SerializeField, Range(0f, 1f)] private float preShowArcadeChance = 0.2f;
 
-        // Read access for state classes
         public float QueuePatiencePerSecond => queuePatiencePerSecond;
         public float WatchSatisfactionPerSecond => watchSatisfactionPerSecond;
         public float UnsatisfiedThreshold => unsatisfiedThreshold;
@@ -570,7 +520,6 @@ namespace CinemaTycoon.Customers
         /// can path back to the same chair.</summary>
         public OccupiedChairLogic ReservedChair => _reservedChair;
 
-        // Static events — EconomyManager and HUD both listen to OnTicketPurchased.
         public static event Action<Customer, float> OnTicketPurchased;
         public static event Action<Customer, float> OnPopcornPurchased;
         public static event Action<Customer, float> OnSatisfactionFinalized;
@@ -593,27 +542,16 @@ namespace CinemaTycoon.Customers
         private float _bathroomStartTime;
         private bool _destroyed;
 
-        // Animator driving — matches WorkerAnimator.controller's "isWalking" param
-        // (lowercase, case-sensitive). Null-guarded so a placeholder prefab without
-        // an Animator still compiles and runs.
         private Animator _animator;
         private static readonly int WalkHash = Animator.StringToHash("isWalking");
-        // Same controller also has a Bool "isHolding" wired to the popcorn-carry
-        // clip. Keep the name aligned with the controller parameter so the
-        // transition fires when the customer picks up / drops the popcorn.
         private static readonly int HoldHash = Animator.StringToHash("isHolding");
 
         private void Awake()
         {
             Agent = GetComponent<NavMeshAgent>();
             _animator = GetComponent<Animator>();
-            // NavMeshAgent owns the transform; animator plays clips in place.
             if (_animator != null) _animator.applyRootMotion = false;
 
-            // Auto-resolve the popcorn prop if the inspector slot is empty.
-            // Every Character_*.prefab parents a FullPopcornTubM as a disabled
-            // child; this lets HoldPopcorn / ReleasePopcorn just toggle
-            // SetActive without per-prefab drag-and-drop.
             if (popcornProp == null)
                 popcornProp = FindPopcornChild();
         }
@@ -627,9 +565,6 @@ namespace CinemaTycoon.Customers
         private GameObject FindPopcornChild()
         {
             const string PropName = "FullPopcornTubM";
-            // GetComponentsInChildren includes inactive children, which matters
-            // here — the prop starts disabled in the prefab and we still want
-            // to find it so HoldPopcorn can flip it on.
             var all = GetComponentsInChildren<Transform>(includeInactive: true);
             for (int i = 0; i < all.Length; i++)
             {
@@ -647,11 +582,6 @@ namespace CinemaTycoon.Customers
         {
             _spawner = spawner;
             IsVIP = isVIP;
-            // Prefabs with the "Female" tag on their root use the female
-            // bathroom. Anything else is treated as male. This keeps the
-            // gender decision entirely on the asset — CustomerSpawnManager
-            // does not need a per-prefab gender list, and the same prefab
-            // set can contain both.
             Gender = CompareTag("Female") ? Gender.Female : Gender.Male;
             Satisfaction = initialSatisfaction;
             ChangeState(new EnteringState(this));
@@ -659,7 +589,6 @@ namespace CinemaTycoon.Customers
 
         private void Update()
         {
-            // Drive walk animation from agent velocity (matches Staff.cs approach).
             if (_animator != null)
             {
                 bool moving = Agent != null && Agent.velocity.sqrMagnitude > 0.01f;
@@ -677,7 +606,6 @@ namespace CinemaTycoon.Customers
 
         public void RequestTransition(CustomerStateType next)
         {
-            // Single dispatch point — keeps state classes ignorant of each other.
             ChangeState(next switch
             {
                 CustomerStateType.Entering    => new EnteringState(this),
@@ -718,7 +646,7 @@ namespace CinemaTycoon.Customers
             if (gm == null || gm.Schedule == null || gm.Economy == null) return;
 
             var schedule = gm.Schedule;
-            if (!schedule.IsMoviePlayingOrImminent) return; // no movie, no sale
+            if (!schedule.IsMoviePlayingOrImminent) return;
 
             float price = schedule.CurrentTicketPrice * gm.Economy.TicketRevenueMultiplier;
             gm.Economy.AddIncome(price, "Ticket sale");
@@ -754,8 +682,6 @@ namespace CinemaTycoon.Customers
             float price = popcornBasePrice * gm.Economy.PopcornRevenueMultiplier;
             gm.Economy.AddIncome(price, "Popcorn sale");
             HasPopcorn = true;
-            // Drive the "isHolding" Animator parameter (UpperBody layer) so the
-            // popcorn-carry clip plays for the rest of the customer's visit.
             HoldPopcorn();
             OnPopcornPurchased?.Invoke(this, price);
         }
@@ -768,7 +694,7 @@ namespace CinemaTycoon.Customers
             float weight = IsVIP ? 2f : 1f;
             float delta = penalty
                 ? -5f * weight
-                : ((Satisfaction - 50f) / 50f) * 5f * weight; // +ve if satisfied, -ve if not
+                : ((Satisfaction - 50f) / 50f) * 5f * weight;
 
             var gm = GameManager.Instance;
             if (gm != null) gm.AdjustCinemaRating(delta, "Customer feedback");
@@ -802,7 +728,7 @@ namespace CinemaTycoon.Customers
         public void SitOnChair()
         {
             if (_reservedChair == null) return;
-            if (IsSeated) return; // idempotent — guards against double-subscribe on re-sit
+            if (IsSeated) return; // idempotent
             _sitStartTime = Time.time;
             _bathroomTime = 0f;
             _reservedChair.OccupyChair();
@@ -822,9 +748,6 @@ namespace CinemaTycoon.Customers
             ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
             IsSeated = false;
 
-            // Subtract any time the customer spent in the bathroom — they
-            // weren't watching the screen during those seconds, so the
-            // satisfaction award should only reflect actual screen time.
             float elapsed = Time.time - _sitStartTime - _bathroomTime;
             var gm = GameManager.Instance;
             float comfort = gm?.Economy?.SeatComfortMultiplier ?? 1f;
@@ -852,9 +775,6 @@ namespace CinemaTycoon.Customers
         {
             _destroyed = true;
             ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
-            // Safety net: if the customer is destroyed mid-bathroom-trip
-            // (scene reload, GameManager teardown) we still want to free
-            // the slot. Release is idempotent.
             ReleaseBathroom();
         }
 
@@ -898,9 +818,6 @@ namespace CinemaTycoon.Customers
             var wp = CinemaWaypoints.Instance;
             if (wp == null || wp.ArcadeMachines == null || wp.ArcadeMachines.Length == 0)
                 return false;
-            // GoingToArcadeState.Enter picks a random non-null machine via
-            // CinemaWaypoints.PickRandomArcade, so we don't need to roll
-            // here — an empty / all-null list is the only failure mode.
             ChangeState(new GoingToArcadeState(this));
             return true;
         }
@@ -920,7 +837,6 @@ namespace CinemaTycoon.Customers
             var bm = BathroomManager.Instance;
             if (bm == null || !bm.TryReserve(this, out _))
             {
-                // Slot taken or no waypoint — undo any chair-wake and bail.
                 if (fromSeat) SitOnChair();
                 return false;
             }
@@ -957,7 +873,7 @@ namespace CinemaTycoon.Customers
             if (_reservedChair == null) return false;
 
             ScheduleManager.OnShowEnded -= HandleShowEndedWhileSitting;
-            _reservedChair.UnOccupyChair(); // hide the sitting child
+            _reservedChair.UnOccupyChair();
             IsSeated = false;
             _bathroomStartTime = Time.time;
             gameObject.SetActive(true);
@@ -984,10 +900,7 @@ namespace CinemaTycoon.Customers
         }
 
         // True while the customer is visually holding their popcorn. Drives the
-        // Animator's "isHolding" Bool parameter (UpperBody layer) and gates
-        // HoldPopcorn so it's safe to call repeatedly. The prop itself is a
-        // pre-placed child GameObject toggled via SetActive, not something we
-        // instantiate at runtime.
+        // Animator's "isHolding" Bool parameter (UpperBody layer).
         private bool isHolding;
 
         public void HoldPopcorn()
@@ -996,12 +909,7 @@ namespace CinemaTycoon.Customers
 
             isHolding = true;
 
-            // The prop is already a child of this customer (designer-placed
-            // and disabled in the prefab), so toggling SetActive is enough —
-            // no Instantiate / Destroy, no allocation churn, no placement to
-            // recompute at runtime.
             if (popcornProp != null) popcornProp.SetActive(true);
-
             if (_animator != null) _animator.SetBool(HoldHash, true);
         }
 
@@ -1012,7 +920,6 @@ namespace CinemaTycoon.Customers
             isHolding = false;
 
             if (popcornProp != null) popcornProp.SetActive(false);
-
             if (_animator != null) _animator.SetBool(HoldHash, false);
         }
     }

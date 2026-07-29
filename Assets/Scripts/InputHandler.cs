@@ -17,16 +17,13 @@ public class InputHandler : MonoBehaviour
     public Vector2 lookDirection;
     public bool sprint;
 
-    // One-frame triggers
     public bool jump;
     public bool LeftClick;
     public bool crouch;
     public bool RightClick;
 
-
     private void Start()
     {
-        
     }
 
     private void OnEnable()
@@ -46,7 +43,6 @@ public class InputHandler : MonoBehaviour
         Sprint.action.canceled += OnSprintCanceled;
 
         Crouch.action.performed += OnCrouchStarted;
-        // Crouch.action.canceled += OnCrouchCanceled;
     }
 
     private void OnDisable()
@@ -61,7 +57,6 @@ public class InputHandler : MonoBehaviour
         Sprint.action.canceled -= OnSprintCanceled;
 
         Crouch.action.performed -= OnCrouchStarted;
-        // Crouch.action.canceled -= OnCrouchCanceled;
 
         Move.action.Disable();
         Fire.action.Disable();
@@ -72,20 +67,17 @@ public class InputHandler : MonoBehaviour
 
     private void Update()
     {
-        // Continuous movement input
         Vector2 moveInput = Move.action.ReadValue<Vector2>();
         moveDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
-        
+
         lookDirection = look.action.ReadValue<Vector2>();
-        
-        // Reset one-frame triggers
+
         jump = false;
         LeftClick = false;
     }
 
     private void LateUpdate()
     {
-        // Reset triggers after everyone has had a chance to read them this frame.
         jump = false;
         LeftClick = false;
         crouch = false;

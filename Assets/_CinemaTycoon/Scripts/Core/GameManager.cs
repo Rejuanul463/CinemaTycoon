@@ -13,7 +13,7 @@ namespace CinemaTycoon.Core
     /// exposes the subsystem managers so cross-system callers can reach
     /// them through a single, well-known entry point.
     /// </summary>
-    [DefaultExecutionOrder(-100)] // Run before dependent managers
+    [DefaultExecutionOrder(-100)]
     public class GameManager : MonoBehaviour
     {
         #region Safe Singleton
@@ -39,7 +39,6 @@ namespace CinemaTycoon.Core
         [Header("Cinema Rating")]
         [SerializeField] private float startingCinemaRating = 75f;
 
-        // Public accessors — read-only from outside.
         public EconomyManager Economy => economyManager;
         public CustomerSpawnManager Spawner => customerSpawnManager;
         public StaffManager Staff => staffManager;
@@ -47,7 +46,6 @@ namespace CinemaTycoon.Core
         public EventManager Events => eventManager;
         public float CinemaRating => _cinemaRating;
 
-        // Static events so UI/scene-flow can subscribe without a reference.
         public static event Action<float> OnCinemaRatingChanged;
         public static event Action<string> OnGameOver;
 
@@ -56,7 +54,6 @@ namespace CinemaTycoon.Core
 
         private void Awake()
         {
-            // Safe singleton: destroy any duplicate spawned by a scene reload.
             if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
@@ -71,8 +68,6 @@ namespace CinemaTycoon.Core
             _cinemaRating = startingCinemaRating;
             OnCinemaRatingChanged?.Invoke(_cinemaRating);
 
-            // Init order matters: economy first (others depend on it),
-            // then services that spend money or read economy state.
             economyManager.Initialize();
             staffManager.Initialize();
             scheduleManager.Initialize();

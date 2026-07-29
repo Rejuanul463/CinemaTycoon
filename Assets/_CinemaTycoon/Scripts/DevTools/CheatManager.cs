@@ -30,7 +30,6 @@ namespace CinemaTycoon.DevTools
 
         private void Update()
         {
-            // Support F1, Fn+F1 on Mac, and ~ (BackQuote) key
             if (Input.GetKeyDown(toggleKey) || Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(KeyCode.BackQuote))
             {
                 _showPanel = !_showPanel;
@@ -52,10 +51,6 @@ namespace CinemaTycoon.DevTools
             GUILayout.Label($"Rating:  {gm.CinemaRating:F1}%");
             GUILayout.Label($"Janitors: {CountJanitors(gm)} | Guards: {CountGuards(gm)} on duty");
 
-            // Show the cleanliness trend so the user understands the bar's
-            // "fighting itself" behaviour. State is sourced from the public
-            // ScheduleManager fields, not from inspecting the bar.
-            float clean = gm.Schedule.HallCleanliness;
             string trend = gm.Schedule.IsMoviePlaying
                 ? $"<color=#e74c3c>▼ decaying</color> (show in progress, -5/s)"
                 : $"<color=#27ae60>▲ recovering</color> (+{(CountJanitors(gm) > 0 ? "2.5" : "0.5")}/s, no show)";
@@ -77,11 +72,11 @@ namespace CinemaTycoon.DevTools
             if (GUILayout.Button("Force Spill Here (at camera)"))
             {
                 if (Mathf.Approximately(Time.timeScale, 0f))
-                {
-                    Debug.LogWarning("[CheatManager] Time.timeScale is 0 — you appear to be in the " +
-                                     "main menu or the pause overlay. The spill was spawned but the " +
-                                     "simulation is frozen.");
-                }
+            {
+                Debug.LogWarning("[CheatManager] Time.timeScale is 0 — you appear to be in the " +
+                                 "main menu or the pause overlay. The spill was spawned but the " +
+                                 "simulation is frozen.");
+            }
                 var cam = Camera.main;
                 Vector3 pos = cam != null ? cam.transform.position : Vector3.zero;
                 gm.Events.DevForceSpillAt(pos);

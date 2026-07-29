@@ -48,9 +48,8 @@ namespace CinemaTycoon.Events
                  "invalid the spill falls back to the TicketBooth waypoint.")]
         [SerializeField] private Transform[] possibleSpillLocations;
         [Tooltip("Prefab spawned on the floor when a Spill triggers. Should have a " +
-                 "flat quad mesh, a dirt/soda material, and the SpillDecal component " +
-                 "(which handles the fade-in / fade-out). Optional — leaving it null " +
-                 "just makes spills invisible, the gameplay loop still works.")]
+                 "flat quad mesh, a dirt/soda material, and the SpillDecal component. " +
+                 "Optional — leaving it null just makes spills invisible.")]
         [SerializeField] private GameObject spillDecalPrefab;
         [Tooltip("Vertical offset added to the spill location when instantiating the " +
                  "decal. Prevents z-fighting with the floor when the location is " +
@@ -149,15 +148,6 @@ namespace CinemaTycoon.Events
                     ? CinemaWaypoints.Instance.TicketBooth.position
                     : Vector3.zero;
 
-            // Project the raw location onto the NavMesh. Possible Spill Locations
-            // are designer-placed transforms that often sit slightly above the
-            // floor (a few cm), which is off the baked NavMesh. Without this
-            // projection the janitor's SetDestination produces no path and the
-            // cleanup task silently stalls. We snap to the nearest walkable
-            // point within a 2m radius — generous enough for designer placement
-            // imprecision, tight enough that a misconfigured location still
-            // surfaces a clear error instead of silently teleporting somewhere
-            // unrelated.
             if (!TryProjectOntoNavMesh(rawLoc, 2f, out Vector3 loc, out string failureReason))
             {
                 Debug.LogWarning($"[EventManager] Spill location {rawLoc} could not be projected onto the " +
@@ -194,11 +184,7 @@ namespace CinemaTycoon.Events
         /// <summary>
         /// Pick a random live Transform from <c>possibleSpillLocations</c>.
         /// Returns false if the array is unset, empty, or every entry has been
-        /// destroyed — Unity keeps a "ghost" reference to a destroyed
-        /// <see cref="Transform"/> that compares equal to null via the overloaded
-        /// <c>==</c> operator but throws <c>MissingReferenceException</c> if you
-        /// touch its members directly, so the array-length check in the call site
-        /// is not enough. Two-pass (count, then pick) keeps the roll fair across
+        /// destroyed. Two-pass (count, then pick) keeps the roll fair across
         /// valid entries regardless of how many stale ones sit in the array.
         /// </summary>
         private bool TryGetRandomSpillLocation(out Vector3 location)
@@ -264,7 +250,7 @@ namespace CinemaTycoon.Events
             }
             if (target == null) return; // skip this round
 
-            target.MarkAsVIP(); // see note below — added via partial? Actually we need a public method.
+            target.MarkAsVIP();
 
             var evt = new GameEvent
             {
@@ -354,9 +340,7 @@ namespace CinemaTycoon.Events
             var gm = GameManager.Instance;
             if (gm == null) return;
 
-            // Decal goes away the moment the spill is cleaned — play the
-            // fade-out animation (SpillDecal destroys itself when finished)
-            // and null the reference so the next Update tick doesn't touch it.
+            // Decal goes away the moment the spill is cleaned.
             TearDownDecal(evt);
 
             if (evt.Type == GameEventType.VIPVisit && evt.RelatedVIP != null)
@@ -392,8 +376,7 @@ namespace CinemaTycoon.Events
             var gm = GameManager.Instance;
             if (gm == null) return;
 
-            // Janitor/Guard never came. Still tear the decal down so the floor
-            // doesn't keep a stale "wet floor" forever.
+            // Janitor/Guard never came. Still tear the decal down.
             TearDownDecal(evt);
 
             if (evt.Type == GameEventType.Spill)
@@ -463,19 +446,12 @@ namespace CinemaTycoon.Events
         /// specific world position (typically the main camera's position so
         /// testers can validate the cleanup loop without waiting for the
         /// random timer). Bypasses the <c>possibleSpillLocations</c> array
-        /// and projects the position onto the NavMesh — the fly camera is
-        /// usually hovering above the floor, so a raw camera position is
-        /// always off-mesh and would stall the janitor.
+        /// and projects the position onto the NavMesh.
         /// </summary>
         public void DevForceSpillAt(Vector3 worldPosition)
         {
             if (!_initialized) Initialize();
 
-            // Project the camera (or any raw world point) onto the NavMesh so
-            // the janitor can actually reach the spill. Use a generous radius
-            // (4m) because the fly camera can be high above the floor and we
-            // want the spill to land on the lobby below the camera, not in
-            // some unrelated walkable area.
             if (!TryProjectOntoNavMesh(worldPosition, 4f, out Vector3 loc, out string reason))
             {
                 Debug.LogWarning($"[EventManager] DevForceSpillAt: {worldPosition} could not be projected " +

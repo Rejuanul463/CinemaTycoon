@@ -31,7 +31,6 @@ public class PopcornJump : MonoBehaviour
 
     void Jump()
     {
-        // Teleport to a new XZ position before jumping
         Vector3 pos = transform.position;
         pos.x = center.position.x + Random.Range(-areaSize.x / 2f, areaSize.x / 2f);
         pos.z = center.position.z + Random.Range(-areaSize.y / 2f, areaSize.y / 2f);

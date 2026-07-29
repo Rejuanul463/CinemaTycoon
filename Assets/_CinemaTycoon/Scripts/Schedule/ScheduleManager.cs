@@ -30,8 +30,7 @@ namespace CinemaTycoon.Schedule
         public float HallCleanliness => _hallCleanliness;
         public IReadOnlyList<MovieData> AvailableMovies => availableMovies;
 
-        // True if a show is currently running OR scheduled to start soon —
-        // customers use this to decide whether buying a ticket is worthwhile.
+        // True if a show is currently running OR scheduled to start soon.
         public bool IsMoviePlayingOrImminent => _showActive || _scheduledStartTime > 0f;
 
         public static event Action<MovieData> OnShowStarted;
@@ -71,14 +70,12 @@ namespace CinemaTycoon.Schedule
             }
             else
             {
-                // Passive regen when no show is running.
                 if (_hallCleanliness < 100f)
                 {
                     _hallCleanliness = Mathf.Min(100f, _hallCleanliness + passiveCleanPerSecond * Time.deltaTime);
                     OnCleanlinessChanged?.Invoke(_hallCleanliness);
                 }
 
-                // Auto-start a previously-scheduled show if its time has come.
                 if (_scheduledStartTime > 0f && Time.time >= _scheduledStartTime)
                 {
                     TryStartShow(_currentMovie);
@@ -120,7 +117,6 @@ namespace CinemaTycoon.Schedule
             var gm = GameManager.Instance;
             if (gm == null || gm.Staff == null) return false;
 
-            // Staffing gate: need a Cashier to sell tickets during this show.
             if (!gm.Staff.HasRoleOnDuty(StaffRole.Cashier))
             {
                 Debug.Log("[Schedule] Cannot start show — no Cashier on duty.");
@@ -137,7 +133,6 @@ namespace CinemaTycoon.Schedule
                 gm.Economy.Spend(movie.licensingCost, $"License: {movie.title}");
             }
 
-            // Adjust genre hype: played genre loses hype, others slowly recover
             foreach (MovieGenre genre in Enum.GetValues(typeof(MovieGenre)))
             {
                 float current = GetGenreHype(genre);

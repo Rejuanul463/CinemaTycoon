@@ -33,7 +33,6 @@ namespace CinemaTycoon.Core
             var listeners = Object.FindObjectsByType<AudioListener>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (listeners == null || listeners.Length <= 1) return;
 
-            // Find primary listener (prefer main camera or active fly camera)
             AudioListener primary = null;
             var mainCam = Camera.main;
             if (mainCam != null) primary = mainCam.GetComponent<AudioListener>();
