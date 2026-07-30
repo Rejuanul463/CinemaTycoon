@@ -31,7 +31,7 @@ The project demonstrates modular system design, decoupled event-driven architect
 Maintain a profitable cinema business while maximizing overall audience satisfaction. The player earns revenue through ticket sales and concession purchases, which can be reinvested into hiring staff and purchasing venue upgrades.
 
 ### Win and Lose Conditions
-* **Victory Condition**: Maintain continuous operation, achieve a high Cinema Rating (approaching 100%), unlock venue upgrades, and maintain financial stability.
+* **Victory Condition**: Reach **100% Cinema Rating**. This freezes gameplay and presents the `Cinema Thriving!` victory screen with restart and return-to-menu options.
 * **Loss Conditions**:
   * **Bankruptcy**: Account balance drops to $0 or below.
   * **Audience Dissatisfaction**: Overall Cinema Rating hits 0% due to uncleaned spills, broken equipment, queue frustration, or dirty viewing halls.
@@ -45,6 +45,14 @@ The project follows a standard multi-scene setup cleanly separating system initi
 ### Scene Structure
 1. `MainMenu.unity`: Contains the primary interface, how-to-play guidance, audio/settings controls, and project credits.
 2. `Demo.unity` (Gameplay Scene): Contains the 3D cinema hall layout, baked NavMesh navigation surfaces, waypoints authority, seating logic, and subsystem managers.
+
+### Menu Flow
+
+- **Main Menu:** Start Game loads the gameplay scene. How to Play explains the goal, failure conditions, controls, and management actions. Settings provides master, music, and SFX volume controls. Credits lists the project and bundled asset sources. Quit exits the built game (or stops Play Mode in the Unity Editor).
+- **Pause Menu:** Press `Escape` to freeze gameplay and open Resume, Restart, Settings, and Exit to Main Menu options.
+- **Game Over:** The overlay displays the loss reason (bankruptcy or zero satisfaction) and offers Restart Game or Exit to Main Menu.
+
+Assign an audio clip to **Game Manager → Audio → Background Music** in the Unity Inspector. The manager creates a looping AudioSource automatically when one has not been assigned. Assign `CinemaTycoonMixer`, `Music`, and `SFX` from the Audio Mixer asset to the matching Game Manager fields to enable mixer-driven Master/Music/SFX controls.
 
 ### Game State Loop
 ```
@@ -251,10 +259,15 @@ The architecture relies on a centralized singleton coordinator pattern combined 
 ## Media and Video Walkthrough
 
 ### Gameplay Screenshots
-*Placeholder: Insert high-resolution screenshots highlighting Main Menu, Cinema Hall, Concession Stand, and UI Toolkit Management Panels.*
+
+| Main menu and UI | Cinema systems in action |
+| :---: | :---: |
+| ![Main Menu](Screenshots/Main%20Menu.PNG) | ![Cinema UI](Screenshots/UI%20%2B%20Front%20of%20the%20Cinema.PNG) |
+| ![Lobby queue](Screenshots/Lobby%20%2B%20waiting%20line.PNG) | ![Customers using arcades](Screenshots/Customers%20using%20arcades.PNG) |
+| ![Popcorn stand](Screenshots/Popcorn%20stand%20in%20the%20lobbyy.PNG) | ![Customers seated in hall](Screenshots/Hall%20Seats%20with%20customers%20sitting%20there.PNG) |
 
 ### Video Demonstration
-* **YouTube Video Link**: `https://www.youtube.com/watch?v=YOUR_VIDEO_ID_HERE`
+* **YouTube Video Link**: _Add the final 5-10 minute narrated walkthrough URL before submission._
 * **Description**: A 5 to 10 minute narrated walkthrough showcasing game setup, menu flow, customer AI pathfinding, staff hiring, incident resolution, upgrade purchases, and cheat manager operations.
 
 ---

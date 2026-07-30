@@ -13,8 +13,33 @@
             </ui:VisualElement>
             <ui:VisualElement class="menu-buttons-container">
                 <ui:Button text="START GAME" name="start-button" class="menu-button" />
+                <ui:Button text="HOW TO PLAY" name="how-to-play-button" class="menu-button" />
+                <ui:Button text="SETTINGS" name="main-menu-settings-button" class="menu-button" />
+                <ui:Button text="CREDITS" name="credits-button" class="menu-button" />
                 <ui:Button text="QUIT"       name="quit-button"  class="menu-button" />
             </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="how-to-play-overlay" class="fullscreen-overlay" style="display: none;">
+            <ui:Label text="HOW TO PLAY" class="overlay-title" picking-mode="Ignore" />
+            <ui:VisualElement class="glass-panel overlay-card overlay-card--wide" style="flex-direction: column; padding: 24px; margin-bottom: 24px;">
+                <ui:Label text="Keep the cinema profitable and guests satisfied." class="sidebar-title" picking-mode="Ignore" style="margin-bottom: 12px;" />
+                <ui:Label text="• Use the MANAGEMENT panel to hire staff, schedule movies, and buy upgrades." class="text-label overlay-copy" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• Move with W/A/S/D; look with the mouse; hold Left Alt to use the management UI." class="text-label overlay-copy" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• Press Escape to pause. Hire Janitors for spills and Guards for VIP guests." class="text-label overlay-copy" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• Win by building a successful cinema; lose if cash or satisfaction reaches zero." class="text-label overlay-copy" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:Button text="BACK" name="how-to-play-back-button" class="menu-button" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="credits-overlay" class="fullscreen-overlay" style="display: none;">
+            <ui:Label text="CREDITS &amp; ATTRIBUTION" class="overlay-title" picking-mode="Ignore" />
+            <ui:VisualElement class="glass-panel overlay-card overlay-card--wide" style="flex-direction: column; padding: 24px; margin-bottom: 24px;">
+                <ui:Label text="Cinema Tycoon" class="sidebar-title" picking-mode="Ignore" style="margin-bottom: 12px;" />
+                <ui:Label text="Developed for the Unity Game Development Course." class="text-label overlay-copy" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="Asset sources: Synty Polygon City, Gwangju 3D, VRCinema for Mobile, AurynSky Arcades Pack, and Mnostva Art FREE Interiors 2." class="text-label overlay-copy" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:Button text="BACK" name="credits-back-button" class="menu-button" />
         </ui:VisualElement>
 
         <!-- ===================== GAMEPLAY HUD (hidden until play) ===================== -->
@@ -99,13 +124,20 @@
         <!-- ===================== SETTINGS OVERLAY ===================== -->
         <ui:VisualElement name="settings-overlay" class="fullscreen-overlay" style="display: none;">
             <ui:Label text="SETTINGS" class="overlay-title" picking-mode="Ignore" />
-            <ui:VisualElement class="glass-panel" style="flex-direction: column; width: 360px; padding: 24px; margin-bottom: 24px;">
+            <ui:VisualElement class="glass-panel overlay-card overlay-card--settings" style="flex-direction: column; padding: 24px; margin-bottom: 24px;">
+                <ui:Label text="AUDIO" class="sidebar-title" picking-mode="Ignore" style="margin-bottom: 12px;" />
+                <ui:Label text="MASTER VOLUME" class="text-label" picking-mode="Ignore" />
+                <ui:Slider name="master-volume-slider" low-value="0" high-value="1" value="1" style="margin-bottom: 10px;" />
+                <ui:Label text="MUSIC VOLUME" class="text-label" picking-mode="Ignore" />
+                <ui:Slider name="music-volume-slider" low-value="0" high-value="1" value="0.7" style="margin-bottom: 10px;" />
+                <ui:Label text="SFX VOLUME" class="text-label" picking-mode="Ignore" />
+                <ui:Slider name="sfx-volume-slider" low-value="0" high-value="1" value="1" style="margin-bottom: 18px;" />
                 <ui:Label text="GAME MECHANICS" class="sidebar-title" picking-mode="Ignore" style="margin-bottom: 12px;" />
-                <ui:Label text="• Cleanliness floor: 50% — hire Janitors to clean"     class="text-label" picking-mode="Ignore" style="margin-bottom: 8px;" />
-                <ui:Label text="• Staff wages paid every 15s ($5 per staff member)"    class="text-label" picking-mode="Ignore" style="margin-bottom: 8px;" />
-                <ui:Label text="• Spill event: -15 Satisfaction if unhandled"          class="text-label" picking-mode="Ignore" style="margin-bottom: 8px;" />
-                <ui:Label text="• VIP event: -25 Satisfaction if Guard is missing"     class="text-label" picking-mode="Ignore" style="margin-bottom: 8px;" />
-                <ui:Label text="• Balance hits $0 or Satisfaction hits 0% = Game Over" class="text-label" picking-mode="Ignore" />
+                <ui:Label text="• Cleanliness floor: 50% — hire Janitors to clean"     class="text-label overlay-copy" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• Staff wages paid every 15s ($5 per staff member)"    class="text-label overlay-copy" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• Spill event: -15 Satisfaction if unhandled"          class="text-label overlay-copy" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• VIP event: -25 Satisfaction if Guard is missing"     class="text-label overlay-copy" picking-mode="Ignore" style="margin-bottom: 8px;" />
+                <ui:Label text="• Balance hits $0 or Satisfaction hits 0% = Game Over" class="text-label overlay-copy" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:Button text="BACK" name="settings-back-button" class="menu-button" />
         </ui:VisualElement>
@@ -116,7 +148,20 @@
             <ui:Label text="You went bankrupt!" name="gameover-reason-label" class="text-value" picking-mode="Ignore" style="margin-bottom: 36px; font-size: 18px;" />
             <ui:VisualElement class="menu-buttons-container">
                 <ui:Button text="RESTART GAME" name="gameover-restart-button" class="menu-button" />
-                <ui:Button text="EXIT"         name="gameover-exit-button"    class="menu-button" />
+                <ui:Button text="EXIT TO MAIN MENU" name="gameover-exit-button" class="menu-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===================== VICTORY OVERLAY ===================== -->
+        <ui:VisualElement name="victory-overlay" class="fullscreen-overlay" style="display: none;">
+            <ui:Label text="CINEMA THRIVING!" class="overlay-title" style="color: #f1c40f;" picking-mode="Ignore" />
+            <ui:VisualElement class="glass-panel overlay-card overlay-card--settings" style="flex-direction: column; padding: 24px; margin-bottom: 24px;">
+                <ui:Label text="You reached 100% audience satisfaction and built a thriving cinema." class="text-value overlay-copy" picking-mode="Ignore" style="font-size: 18px; margin-bottom: 8px;" />
+                <ui:Label text="Congratulations, Cinema Tycoon!" class="text-label overlay-copy" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="menu-buttons-container">
+                <ui:Button text="RESTART GAME" name="victory-restart-button" class="menu-button" />
+                <ui:Button text="EXIT TO MAIN MENU" name="victory-exit-button" class="menu-button" />
             </ui:VisualElement>
         </ui:VisualElement>
 

@@ -25,9 +25,16 @@ namespace CinemaTycoon.UI
 
         private VisualElement _mainMenuPanel;
         private VisualElement _gameplayHud;
+        private VisualElement _howToPlayOverlay;
+        private VisualElement _creditsOverlay;
 
         private Button _startButton;
         private Button _quitButton;
+        private Button _howToPlayButton;
+        private Button _mainMenuSettingsButton;
+        private Button _creditsButton;
+        private Button _howToPlayBackButton;
+        private Button _creditsBackButton;
 
         private Button _hireCashierButton;
         private Button _hireJanitorButton;
@@ -41,6 +48,7 @@ namespace CinemaTycoon.UI
         private VisualElement _pauseOverlay;
         private VisualElement _settingsOverlay;
         private VisualElement _gameoverOverlay;
+        private VisualElement _victoryOverlay;
 
         private Button _resumeButton;
         private Button _restartButton;
@@ -48,10 +56,19 @@ namespace CinemaTycoon.UI
         private Button _exitButton;
 
         private Button _settingsBackButton;
+        private Slider _masterVolumeSlider;
+        private Slider _musicVolumeSlider;
+        private Slider _sfxVolumeSlider;
+        private EventCallback<ChangeEvent<float>> _masterVolumeChangedCallback;
+        private EventCallback<ChangeEvent<float>> _musicVolumeChangedCallback;
+        private EventCallback<ChangeEvent<float>> _sfxVolumeChangedCallback;
+        private bool _settingsOpenedFromMainMenu;
 
         private Label _gameoverReasonLabel;
         private Button _gameoverRestartButton;
         private Button _gameoverExitButton;
+        private Button _victoryRestartButton;
+        private Button _victoryExitButton;
 
         private Label _balanceLabel;
         private Label _ratingLabel;
@@ -94,9 +111,6 @@ namespace CinemaTycoon.UI
 
         private bool _sanityLogged;
 
-        private ManagementCategory _openCategory = ManagementCategory.None;
-        private const string StaffCategoryLabel   = "STAFF";
-
         private void OnEnable()
         {
             _root = GetComponent<UIDocument>().rootVisualElement;
@@ -123,9 +137,21 @@ namespace CinemaTycoon.UI
             _gameplayHud = _root.Q<VisualElement>("gameplay-hud");
             _startButton = _root.Q<Button>("start-button");
             _quitButton = _root.Q<Button>("quit-button");
+            _howToPlayButton = _root.Q<Button>("how-to-play-button");
+            _mainMenuSettingsButton = _root.Q<Button>("main-menu-settings-button");
+            _creditsButton = _root.Q<Button>("credits-button");
+            _howToPlayBackButton = _root.Q<Button>("how-to-play-back-button");
+            _creditsBackButton = _root.Q<Button>("credits-back-button");
+            _howToPlayOverlay = _root.Q<VisualElement>("how-to-play-overlay");
+            _creditsOverlay = _root.Q<VisualElement>("credits-overlay");
 
             if (_startButton != null) _startButton.clicked += HandleStartClicked;
             if (_quitButton != null) _quitButton.clicked += HandleQuitClicked;
+            if (_howToPlayButton != null) _howToPlayButton.clicked += OpenHowToPlay;
+            if (_mainMenuSettingsButton != null) _mainMenuSettingsButton.clicked += OpenMainMenuSettings;
+            if (_creditsButton != null) _creditsButton.clicked += OpenCredits;
+            if (_howToPlayBackButton != null) _howToPlayBackButton.clicked += CloseMenuOverlay;
+            if (_creditsBackButton != null) _creditsBackButton.clicked += CloseMenuOverlay;
 
             _hireCashierButton  = _root.Q<Button>("hire-cashier-button");
             _hireJanitorButton  = _root.Q<Button>("hire-janitor-button");
@@ -243,6 +269,7 @@ namespace CinemaTycoon.UI
             _pauseOverlay = _root.Q<VisualElement>("pause-overlay");
             _settingsOverlay = _root.Q<VisualElement>("settings-overlay");
             _gameoverOverlay = _root.Q<VisualElement>("gameover-overlay");
+            _victoryOverlay = _root.Q<VisualElement>("victory-overlay");
 
             _resumeButton = _root.Q<Button>("resume-button");
             _restartButton = _root.Q<Button>("restart-button");
@@ -256,6 +283,15 @@ namespace CinemaTycoon.UI
 
             _settingsBackButton = _root.Q<Button>("settings-back-button");
             if (_settingsBackButton != null) _settingsBackButton.clicked += CloseSettingsMenu;
+            _masterVolumeSlider = _root.Q<Slider>("master-volume-slider");
+            _musicVolumeSlider = _root.Q<Slider>("music-volume-slider");
+            _sfxVolumeSlider = _root.Q<Slider>("sfx-volume-slider");
+            _masterVolumeChangedCallback = evt => GameManager.Instance?.SetMasterVolume(evt.newValue);
+            _musicVolumeChangedCallback = evt => GameManager.Instance?.SetMusicVolume(evt.newValue);
+            _sfxVolumeChangedCallback = evt => GameManager.Instance?.SetSfxVolume(evt.newValue);
+            if (_masterVolumeSlider != null) _masterVolumeSlider.RegisterValueChangedCallback(_masterVolumeChangedCallback);
+            if (_musicVolumeSlider != null) _musicVolumeSlider.RegisterValueChangedCallback(_musicVolumeChangedCallback);
+            if (_sfxVolumeSlider != null) _sfxVolumeSlider.RegisterValueChangedCallback(_sfxVolumeChangedCallback);
 
             _gameoverReasonLabel = _root.Q<Label>("gameover-reason-label");
             _gameoverRestartButton = _root.Q<Button>("gameover-restart-button");
@@ -263,6 +299,11 @@ namespace CinemaTycoon.UI
 
             if (_gameoverRestartButton != null) _gameoverRestartButton.clicked += RestartGame;
             if (_gameoverExitButton != null) _gameoverExitButton.clicked += ExitToMainMenu;
+
+            _victoryRestartButton = _root.Q<Button>("victory-restart-button");
+            _victoryExitButton = _root.Q<Button>("victory-exit-button");
+            if (_victoryRestartButton != null) _victoryRestartButton.clicked += RestartGame;
+            if (_victoryExitButton != null) _victoryExitButton.clicked += ExitToMainMenu;
 
             _balanceLabel = _root.Q<Label>("balance-label");
             _ratingLabel = _root.Q<Label>("rating-label");
@@ -284,6 +325,7 @@ namespace CinemaTycoon.UI
             EventManager.OnEventResolved += HandleEventResolved;
             EventManager.OnEventExpired += HandleEventExpired;
             GameManager.OnGameOver += HandleGameOver;
+            GameManager.OnGameWon += HandleGameWon;
             FlyCameraController.OnCursorLockChanged += HandleCursorLockChanged;
         }
 
@@ -294,6 +336,11 @@ namespace CinemaTycoon.UI
 
             if (_startButton != null) _startButton.clicked -= HandleStartClicked;
             if (_quitButton != null) _quitButton.clicked -= HandleQuitClicked;
+            if (_howToPlayButton != null) _howToPlayButton.clicked -= OpenHowToPlay;
+            if (_mainMenuSettingsButton != null) _mainMenuSettingsButton.clicked -= OpenMainMenuSettings;
+            if (_creditsButton != null) _creditsButton.clicked -= OpenCredits;
+            if (_howToPlayBackButton != null) _howToPlayBackButton.clicked -= CloseMenuOverlay;
+            if (_creditsBackButton != null) _creditsBackButton.clicked -= CloseMenuOverlay;
 
             if (_hireCashierButton != null && _hireCashierCallback != null)
                 _hireCashierButton.UnregisterCallback<ClickEvent>(_hireCashierCallback);
@@ -329,8 +376,16 @@ namespace CinemaTycoon.UI
             if (_settingsButton != null) _settingsButton.clicked -= OpenSettingsMenu;
             if (_exitButton != null) _exitButton.clicked -= ExitToMainMenu;
             if (_settingsBackButton != null) _settingsBackButton.clicked -= CloseSettingsMenu;
+            if (_masterVolumeSlider != null && _masterVolumeChangedCallback != null)
+                _masterVolumeSlider.UnregisterValueChangedCallback(_masterVolumeChangedCallback);
+            if (_musicVolumeSlider != null && _musicVolumeChangedCallback != null)
+                _musicVolumeSlider.UnregisterValueChangedCallback(_musicVolumeChangedCallback);
+            if (_sfxVolumeSlider != null && _sfxVolumeChangedCallback != null)
+                _sfxVolumeSlider.UnregisterValueChangedCallback(_sfxVolumeChangedCallback);
             if (_gameoverRestartButton != null) _gameoverRestartButton.clicked -= RestartGame;
             if (_gameoverExitButton != null) _gameoverExitButton.clicked -= ExitToMainMenu;
+            if (_victoryRestartButton != null) _victoryRestartButton.clicked -= RestartGame;
+            if (_victoryExitButton != null) _victoryExitButton.clicked -= ExitToMainMenu;
 
             EconomyManager.OnBalanceChanged -= HandleBalanceChanged;
             GameManager.OnCinemaRatingChanged -= HandleRatingChanged;
@@ -343,6 +398,7 @@ namespace CinemaTycoon.UI
             EventManager.OnEventResolved -= HandleEventResolved;
             EventManager.OnEventExpired -= HandleEventExpired;
             GameManager.OnGameOver -= HandleGameOver;
+            GameManager.OnGameWon -= HandleGameWon;
             FlyCameraController.OnCursorLockChanged -= HandleCursorLockChanged;
         }
 
@@ -378,10 +434,13 @@ namespace CinemaTycoon.UI
                 _isGameStarted = false;
 
                 if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.Flex;
+                if (_howToPlayOverlay != null) _howToPlayOverlay.style.display = DisplayStyle.None;
+                if (_creditsOverlay != null) _creditsOverlay.style.display = DisplayStyle.None;
                 if (_gameplayHud != null) _gameplayHud.style.display = DisplayStyle.None;
                 if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.None;
                 if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.None;
                 if (_gameoverOverlay != null) _gameoverOverlay.style.display = DisplayStyle.None;
+                if (_victoryOverlay != null) _victoryOverlay.style.display = DisplayStyle.None;
 
                 var cam = FindFirstObjectByType<FlyCameraController>();
                 if (cam != null) cam.SetState(FlyCameraController.CameraState.MainMenu);
@@ -392,10 +451,13 @@ namespace CinemaTycoon.UI
                 _isGameStarted = true;
 
                 if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.None;
+                if (_howToPlayOverlay != null) _howToPlayOverlay.style.display = DisplayStyle.None;
+                if (_creditsOverlay != null) _creditsOverlay.style.display = DisplayStyle.None;
                 if (_gameplayHud != null) _gameplayHud.style.display = DisplayStyle.Flex;
                 if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.None;
                 if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.None;
                 if (_gameoverOverlay != null) _gameoverOverlay.style.display = DisplayStyle.None;
+                if (_victoryOverlay != null) _victoryOverlay.style.display = DisplayStyle.None;
 
                 var cam = FindFirstObjectByType<FlyCameraController>();
                 if (cam != null) cam.SetState(FlyCameraController.CameraState.FlyMode);
@@ -404,6 +466,9 @@ namespace CinemaTycoon.UI
             var gm = GameManager.Instance;
             if (gm != null)
             {
+                if (_masterVolumeSlider != null) _masterVolumeSlider.SetValueWithoutNotify(gm.MasterVolume);
+                if (_musicVolumeSlider != null) _musicVolumeSlider.SetValueWithoutNotify(gm.MusicVolume);
+                if (_sfxVolumeSlider != null) _sfxVolumeSlider.SetValueWithoutNotify(gm.SfxVolume);
                 Debug.Log("[HUD] Start(): GameManager found; populating UI + stats.");
                 PopulateMovieButtons();
 
@@ -480,6 +545,7 @@ namespace CinemaTycoon.UI
 
         private void TryHireStaff(StaffRole role)
         {
+            PlayUiClick();
             Debug.Log($"[HUD] TryHireStaff called for {role}");
             var gm = GameManager.Instance;
             if (gm == null)  { Debug.LogError("[HUD] GameManager.Instance is NULL"); return; }
@@ -490,6 +556,7 @@ namespace CinemaTycoon.UI
 
         private void TryPurchaseUpgrade(UpgradeType type)
         {
+            PlayUiClick();
             Debug.Log($"[HUD] TryPurchaseUpgrade called for {type}");
             var gm = GameManager.Instance;
             if (gm == null)     { Debug.LogError("[HUD] GameManager.Instance is NULL"); return; }
@@ -500,6 +567,7 @@ namespace CinemaTycoon.UI
 
         private void TryScheduleMovie(MovieData movie)
         {
+            PlayUiClick();
             var gm = GameManager.Instance;
             if (gm == null || gm.Schedule == null) return;
 
@@ -508,6 +576,7 @@ namespace CinemaTycoon.UI
 
         private void HandleStartClicked()
         {
+            PlayUiClick();
             Debug.Log("[HUD] HandleStartClicked()");
             _isGameStarted = true;
             Time.timeScale = 1f;
@@ -535,11 +604,42 @@ namespace CinemaTycoon.UI
 
         private void HandleQuitClicked()
         {
+            PlayUiClick();
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
 #else
             Application.Quit();
 #endif
+        }
+
+        private void OpenHowToPlay()
+        {
+            PlayUiClick();
+            if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.None;
+            if (_howToPlayOverlay != null) _howToPlayOverlay.style.display = DisplayStyle.Flex;
+        }
+
+        private void OpenCredits()
+        {
+            PlayUiClick();
+            if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.None;
+            if (_creditsOverlay != null) _creditsOverlay.style.display = DisplayStyle.Flex;
+        }
+
+        private void CloseMenuOverlay()
+        {
+            PlayUiClick();
+            if (_howToPlayOverlay != null) _howToPlayOverlay.style.display = DisplayStyle.None;
+            if (_creditsOverlay != null) _creditsOverlay.style.display = DisplayStyle.None;
+            if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.Flex;
+        }
+
+        private void OpenMainMenuSettings()
+        {
+            PlayUiClick();
+            _settingsOpenedFromMainMenu = true;
+            if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.None;
+            if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.Flex;
         }
 
         /// <summary>
@@ -548,6 +648,7 @@ namespace CinemaTycoon.UI
         /// </summary>
         private void ToggleCategory(ManagementCategory category)
         {
+            PlayUiClick();
             _openCategory = (_openCategory == category) ? ManagementCategory.None : category;
             ApplyCategoryState();
         }
@@ -604,6 +705,7 @@ namespace CinemaTycoon.UI
 
         private void PauseGame()
         {
+            PlayUiClick();
             _isPaused = true;
             Time.timeScale = 0f;
 
@@ -616,6 +718,7 @@ namespace CinemaTycoon.UI
 
         private void ResumeGame()
         {
+            PlayUiClick();
             _isPaused = false;
             Time.timeScale = 1f;
 
@@ -631,18 +734,30 @@ namespace CinemaTycoon.UI
 
         private void OpenSettingsMenu()
         {
+            PlayUiClick();
+            _settingsOpenedFromMainMenu = false;
             if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.None;
             if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.Flex;
         }
 
         private void CloseSettingsMenu()
         {
+            PlayUiClick();
             if (_settingsOverlay != null) _settingsOverlay.style.display = DisplayStyle.None;
-            if (_pauseOverlay != null) _pauseOverlay.style.display = DisplayStyle.Flex;
+            if (_settingsOpenedFromMainMenu)
+            {
+                if (_mainMenuPanel != null) _mainMenuPanel.style.display = DisplayStyle.Flex;
+                _settingsOpenedFromMainMenu = false;
+            }
+            else if (_pauseOverlay != null)
+            {
+                _pauseOverlay.style.display = DisplayStyle.Flex;
+            }
         }
 
         private void RestartGame()
         {
+            PlayUiClick();
             Time.timeScale = 1f;
             if (GameManager.Instance != null) Destroy(GameManager.Instance.gameObject);
 
@@ -661,6 +776,7 @@ namespace CinemaTycoon.UI
 
         private void ExitToMainMenu()
         {
+            PlayUiClick();
             Time.timeScale = 1f;
             if (GameManager.Instance != null) Destroy(GameManager.Instance.gameObject);
 
@@ -687,6 +803,22 @@ namespace CinemaTycoon.UI
             {
                 cam.SetState(FlyCameraController.CameraState.MainMenu);
             }
+        }
+
+        private void HandleGameWon()
+        {
+            _isGameOver = true;
+            Time.timeScale = 0f;
+            if (_victoryOverlay != null) _victoryOverlay.style.display = DisplayStyle.Flex;
+
+            var cam = FindFirstObjectByType<FlyCameraController>();
+            if (cam != null)
+                cam.SetState(FlyCameraController.CameraState.MainMenu);
+        }
+
+        private static void PlayUiClick()
+        {
+            GameManager.Instance?.PlayUiClick();
         }
 
         private void HandleBalanceChanged(float balance)

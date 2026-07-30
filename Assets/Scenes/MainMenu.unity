@@ -313522,7 +313522,19 @@ MonoBehaviour:
   staffManager: {fileID: 2040037141}
   scheduleManager: {fileID: 2040037142}
   eventManager: {fileID: 2040037140}
-  startingCinemaRating: 75
+  startingCinemaRating: 55
+  backgroundMusicSource: {fileID: 0}
+  backgroundMusic: {fileID: 8300000, guid: 5ff7dfb765a122c43ba06c3673a34129, type: 3}
+  uiClickSound: {fileID: 8300000, guid: f15f24c6c0fa2724c9c4478c9f47b997, type: 3}
+  audioMixer: {fileID: 0}
+  musicMixerGroup: {fileID: 0}
+  sfxMixerGroup: {fileID: 0}
+  masterVolumeParameter: MasterVolume
+  musicVolumeParameter: MusicVolume
+  sfxVolumeParameter: SfxVolume
+  masterVolume: 1
+  musicVolume: 0.7
+  sfxVolume: 1
 --- !u!4 &2040037146
 Transform:
   m_ObjectHideFlags: 0

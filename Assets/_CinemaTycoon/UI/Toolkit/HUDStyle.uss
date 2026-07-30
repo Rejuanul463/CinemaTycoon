@@ -358,6 +358,7 @@
     background-color: rgba(8, 9, 14, 0.97);
     justify-content: center;
     align-items: center;
+    overflow: hidden;
 }
 
 .overlay-title {
@@ -366,4 +367,23 @@
     color: #ffffff;
     margin-bottom: 32px;
     -unity-text-align: middle-center;
+    max-width: 90%;
+    white-space: normal;
+}
+
+/* Keep menu copy inside its card at every supported screen size. */
+.overlay-card {
+    width: 82%;
+    max-width: 560px;
+    overflow: hidden;
+}
+
+.overlay-card--settings {
+    max-width: 420px;
+}
+
+.overlay-copy {
+    white-space: normal;
+    flex-shrink: 1;
+    margin-right: 0;
 }

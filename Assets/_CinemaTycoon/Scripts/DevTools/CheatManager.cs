@@ -54,7 +54,7 @@ namespace CinemaTycoon.DevTools
             string trend = gm.Schedule.IsMoviePlaying
                 ? $"<color=#e74c3c>▼ decaying</color> (show in progress, -5/s)"
                 : $"<color=#27ae60>▲ recovering</color> (+{(CountJanitors(gm) > 0 ? "2.5" : "0.5")}/s, no show)";
-            GUILayout.Label($"Cleanliness: {clean:F0}% {trend}");
+            GUILayout.Label($"Cleanliness: {gm.Schedule.HallCleanliness:F0}% {trend}");
             GUILayout.Space(8);
 
             if (GUILayout.Button($"Inject ${cheatMoneyAmount:F0}"))
