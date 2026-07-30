@@ -313414,6 +313414,9 @@ MonoBehaviour:
   vipGoodServiceReward: 20
   vipPoorServicePenalty: 25
   spillWeight: 0.6
+  rowdyDuration: 35
+  rowdyPenalty: 15
+  rowdyResolutionReward: 15
 --- !u!114 &2040037141
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -313500,6 +313503,8 @@ MonoBehaviour:
   startingBalance: 1000
   staffWagePerTick: 5
   wageTickInterval: 15
+  utilityCostPerTick: 40
+  utilityTickInterval: 30
   availableUpgrades:
   - {fileID: 11400000, guid: d4ac868f97ffe1e4ea6672cd067b04c8, type: 2}
   - {fileID: 11400000, guid: 1a4b3f7e94a340149ab531b7bdf85f59, type: 2}
@@ -313533,7 +313538,7 @@ MonoBehaviour:
   musicVolumeParameter: MusicVolume
   sfxVolumeParameter: SfxVolume
   masterVolume: 1
-  musicVolume: 0.7
+  musicVolume: 0.316
   sfxVolume: 1
 --- !u!4 &2040037146
 Transform:

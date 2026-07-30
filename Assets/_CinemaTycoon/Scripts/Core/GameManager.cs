@@ -88,6 +88,7 @@ namespace CinemaTycoon.Core
             }
             _instance = this;
             DontDestroyOnLoad(gameObject);
+            PreloadUiAudio();
             ConfigureAudio();
             SceneManager.sceneLoaded += HandleSceneLoaded;
         }
@@ -142,6 +143,12 @@ namespace CinemaTycoon.Core
 
         /// <summary>Plays the shared UI interaction sound, when assigned.</summary>
         public void PlayUiClick() => PlaySfx(uiClickSound);
+
+        private void PreloadUiAudio()
+        {
+            if (uiClickSound != null && uiClickSound.loadState != AudioDataLoadState.Loaded)
+                uiClickSound.LoadAudioData();
+        }
 
         private void ConfigureAudio()
         {
