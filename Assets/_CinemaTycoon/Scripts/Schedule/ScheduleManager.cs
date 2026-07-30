@@ -30,7 +30,6 @@ namespace CinemaTycoon.Schedule
         public float HallCleanliness => _hallCleanliness;
         public IReadOnlyList<MovieData> AvailableMovies => availableMovies;
 
-        // True if a show is currently running OR scheduled to start soon.
         public bool IsMoviePlayingOrImminent => _showActive || _scheduledStartTime > 0f;
 
         public static event Action<MovieData> OnShowStarted;

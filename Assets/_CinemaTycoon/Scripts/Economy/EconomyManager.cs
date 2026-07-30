@@ -158,7 +158,6 @@ namespace CinemaTycoon.Economy
             return 1f;
         }
 
-        // Convenience accessors so callers don't need to know the convention.
         public float TicketRevenueMultiplier => GetMultiplier(UpgradeType.PremiumPopcorn);
         public float CashierSpeedMultiplier   => GetMultiplier(UpgradeType.FasterCashier);
         public float SeatComfortMultiplier    => GetMultiplier(UpgradeType.ComfySeats);

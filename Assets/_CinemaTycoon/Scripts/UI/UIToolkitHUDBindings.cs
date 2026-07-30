@@ -23,15 +23,12 @@ namespace CinemaTycoon.UI
 
         private bool _debugPointerHooked;
 
-        // Main Panels
         private VisualElement _mainMenuPanel;
         private VisualElement _gameplayHud;
 
-        // Main Menu Buttons
         private Button _startButton;
         private Button _quitButton;
 
-        // HUD Sidebar Management Buttons
         private Button _hireCashierButton;
         private Button _hireJanitorButton;
         private Button _hireGuardButton;
@@ -41,26 +38,21 @@ namespace CinemaTycoon.UI
         private Button _buyMarketingButton;
         private VisualElement _movieButtonsContainer;
 
-        // Overlays
         private VisualElement _pauseOverlay;
         private VisualElement _settingsOverlay;
         private VisualElement _gameoverOverlay;
 
-        // Pause Menu Buttons
         private Button _resumeButton;
         private Button _restartButton;
         private Button _settingsButton;
         private Button _exitButton;
 
-        // Settings Back Button
         private Button _settingsBackButton;
 
-        // Game Over Buttons & Text
         private Label _gameoverReasonLabel;
         private Button _gameoverRestartButton;
         private Button _gameoverExitButton;
 
-        // Stats Labels
         private Label _balanceLabel;
         private Label _ratingLabel;
         private ProgressBar _ratingBar;
@@ -79,8 +71,6 @@ namespace CinemaTycoon.UI
         private EventCallback<ClickEvent> _buyMarketingCallback;
         private readonly List<(Button button, EventCallback<ClickEvent> callback)> _movieButtonCallbacks = new();
 
-        // Accordion category buttons and their collapsible content panels.
-        // Only one category is open at a time; clicking the open one closes it.
         private enum ManagementCategory { None, Staff, Movies, Upgrades }
         private Button _staffCategoryButton;
         private Button _moviesCategoryButton;
@@ -98,12 +88,14 @@ namespace CinemaTycoon.UI
         private const string CategoryClosedGlyph = "\u25B8  "; // ▸
         private const string CategoryOpenGlyph   = "\u25BE  "; // ▾
 
-        // State trackers
         private bool _isGameStarted = false;
         private bool _isPaused = false;
         private bool _isGameOver = false;
 
         private bool _sanityLogged;
+
+        private ManagementCategory _openCategory = ManagementCategory.None;
+        private const string StaffCategoryLabel   = "STAFF";
 
         private void OnEnable()
         {
@@ -118,7 +110,6 @@ namespace CinemaTycoon.UI
             _root.RegisterCallback<PointerDownEvent>(OnRootPointerDown);
             _root.RegisterCallback<PointerUpEvent>(OnRootPointerUp);
 
-            // Apply USS stylesheet programmatically
             if (hudStyleSheet != null)
             {
                 _root.styleSheets.Add(hudStyleSheet);
@@ -133,7 +124,6 @@ namespace CinemaTycoon.UI
             _startButton = _root.Q<Button>("start-button");
             _quitButton = _root.Q<Button>("quit-button");
 
-            // Wire Main Menu button clicks
             if (_startButton != null) _startButton.clicked += HandleStartClicked;
             if (_quitButton != null) _quitButton.clicked += HandleQuitClicked;
 
@@ -153,7 +143,6 @@ namespace CinemaTycoon.UI
             _moviesCategoryContent   = _root.Q<VisualElement>("movies-category-content");
             _upgradesCategoryContent = _root.Q<VisualElement>("upgrades-category-content");
 
-            // Wire category-button clicks
             if (_staffCategoryButton != null)
             {
                 _staffCategoryCallback = _ => ToggleCategory(ManagementCategory.Staff);
@@ -181,7 +170,6 @@ namespace CinemaTycoon.UI
                       $"Seats:{_buySeatsButton != null} " +
                       $"Marketing:{_buyMarketingButton != null}");
 
-            // Wire Sidebar clicks using ClickEvent
             if (_hireCashierButton != null)
             {
                 _hireCashierCallback = _ =>
@@ -276,7 +264,6 @@ namespace CinemaTycoon.UI
             if (_gameoverRestartButton != null) _gameoverRestartButton.clicked += RestartGame;
             if (_gameoverExitButton != null) _gameoverExitButton.clicked += ExitToMainMenu;
 
-            // Query Stats elements
             _balanceLabel = _root.Q<Label>("balance-label");
             _ratingLabel = _root.Q<Label>("rating-label");
             _ratingBar = _root.Q<ProgressBar>("rating-bar");
@@ -308,7 +295,6 @@ namespace CinemaTycoon.UI
             if (_startButton != null) _startButton.clicked -= HandleStartClicked;
             if (_quitButton != null) _quitButton.clicked -= HandleQuitClicked;
 
-            // Unregister stored ClickEvent delegates on sidebar buttons.
             if (_hireCashierButton != null && _hireCashierCallback != null)
                 _hireCashierButton.UnregisterCallback<ClickEvent>(_hireCashierCallback);
             if (_hireJanitorButton != null && _hireJanitorCallback != null)
@@ -324,7 +310,6 @@ namespace CinemaTycoon.UI
             if (_buyMarketingButton != null && _buyMarketingCallback != null)
                 _buyMarketingButton.UnregisterCallback<ClickEvent>(_buyMarketingCallback);
 
-            // Unregister category-button delegates.
             if (_staffCategoryButton != null && _staffCategoryCallback != null)
                 _staffCategoryButton.UnregisterCallback<ClickEvent>(_staffCategoryCallback);
             if (_moviesCategoryButton != null && _moviesCategoryCallback != null)
@@ -332,7 +317,6 @@ namespace CinemaTycoon.UI
             if (_upgradesCategoryButton != null && _upgradesCategoryCallback != null)
                 _upgradesCategoryButton.UnregisterCallback<ClickEvent>(_upgradesCategoryCallback);
 
-            // Unregister all dynamically created movie buttons.
             foreach (var (button, callback) in _movieButtonCallbacks)
             {
                 if (button != null && callback != null)
@@ -448,7 +432,6 @@ namespace CinemaTycoon.UI
                     Debug.Log($"[HUD] Sanity: hire-cashier enabledSelf={_hireCashierButton.enabledSelf} focusable={_hireCashierButton.focusable}");
             }
 
-            // Handle Pause Toggle Shortcut
             if (_isGameStarted && !_isGameOver)
             {
                 if (Input.GetKeyDown(KeyCode.Escape))
@@ -469,7 +452,6 @@ namespace CinemaTycoon.UI
         {
             if (_movieButtonsContainer == null) return;
 
-            // Unregister and clear previously registered movie button callbacks
             foreach (var (button, callback) in _movieButtonCallbacks)
             {
                 if (button != null && callback != null)

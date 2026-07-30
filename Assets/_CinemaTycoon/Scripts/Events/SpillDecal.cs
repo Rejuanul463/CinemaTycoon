@@ -106,11 +106,9 @@ namespace CinemaTycoon.Events
             if (!_isBeingCleaned) return;
             t01 = Mathf.Clamp01(t01);
 
-            // Scale: 1.0 → 0.05 (leaves a tiny visible residue, fade-out finishes the job).
             float scaleFactor = Mathf.Lerp(1f, 0.05f, t01);
             transform.localScale = _originalScale * scaleFactor;
 
-            // Alpha: 1.0 → 0.4 (extra feedback — the spill gets "thinner" as it dries).
             SetAlpha(Mathf.Lerp(1f, 0.4f, t01));
         }
 

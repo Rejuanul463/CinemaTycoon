@@ -486,7 +486,6 @@ namespace CinemaTycoon.Customers
                  "Mimics the 'kill time before the movie' behavior. Rolls once " +
                  "per entry; if no arcades are assigned the detour is skipped.")]
         [SerializeField, Range(0f, 1f)] private float preShowArcadeChance = 0.2f;
-        [SerializeField, Range(0f, 1f)] private float preShowArcadeChance = 0.2f;
 
         public float QueuePatiencePerSecond => queuePatiencePerSecond;
         public float WatchSatisfactionPerSecond => watchSatisfactionPerSecond;

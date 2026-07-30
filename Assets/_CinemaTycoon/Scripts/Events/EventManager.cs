@@ -130,8 +130,7 @@ namespace CinemaTycoon.Events
             }
         }
 
-        private void TriggerRandomEvent()
-        {
+        private void TriggerRandomEvent()        {
             float roll = UnityEngine.Random.value;
             if (roll < spillWeight) TriggerSpill();
             else if (roll < spillWeight + 0.15f) TriggerVipVisit();
@@ -166,11 +165,6 @@ namespace CinemaTycoon.Events
                 TotalDuration = spillDuration
             };
 
-            // Spawn the physical decal so the spill is visible to the player.
-            // The prefab is optional — gameplay (event timer, janitor task, rating
-            // impact) runs even if no decal was assigned. The decal component
-            // handles its own fade-in; destruction is managed by ResolveEvent /
-            // ExpireEvent (see the GameEvent.PhysicalDecal doc).
             if (spillDecalPrefab != null)
             {
                 Vector3 decalPos = loc + Vector3.up * spillDecalHeightOffset;
@@ -187,8 +181,7 @@ namespace CinemaTycoon.Events
         /// destroyed. Two-pass (count, then pick) keeps the roll fair across
         /// valid entries regardless of how many stale ones sit in the array.
         /// </summary>
-        private bool TryGetRandomSpillLocation(out Vector3 location)
-        {
+        private bool TryGetRandomSpillLocation(out Vector3 location)        {
             location = default;
             if (possibleSpillLocations == null || possibleSpillLocations.Length == 0) return false;
 
@@ -340,7 +333,6 @@ namespace CinemaTycoon.Events
             var gm = GameManager.Instance;
             if (gm == null) return;
 
-            // Decal goes away the moment the spill is cleaned.
             TearDownDecal(evt);
 
             if (evt.Type == GameEventType.VIPVisit && evt.RelatedVIP != null)
@@ -376,7 +368,6 @@ namespace CinemaTycoon.Events
             var gm = GameManager.Instance;
             if (gm == null) return;
 
-            // Janitor/Guard never came. Still tear the decal down.
             TearDownDecal(evt);
 
             if (evt.Type == GameEventType.Spill)
@@ -412,8 +403,6 @@ namespace CinemaTycoon.Events
         {
             if (evt?.PhysicalDecal == null) return;
 
-            // Prefer the animated fade if the SpillDecal component is present;
-            // fall back to a hard destroy so a missing component can't leak the GO.
             if (evt.PhysicalDecal.TryGetComponent(out SpillDecal decal))
                 decal.FadeOutAndDestroy();
             else

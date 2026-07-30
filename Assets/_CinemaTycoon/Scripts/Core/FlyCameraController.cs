@@ -171,10 +171,7 @@ namespace CinemaTycoon.Core
             int startIndex = _currentSecurityCameraIndex < 0 ? 0 : _currentSecurityCameraIndex;
             int index = startIndex;
 
-            // Walk the list until we find a non-null waypoint. If every
-            // waypoint is null we give up silently — the player can still
-            // look around from the current position until TAB takes them
-            // back to FlyMode.
+            // Walk the list until we find a non-null waypoint.
             for (int i = 0; i < count; i++)
             {
                 index = ((index + direction) % count + count) % count;
