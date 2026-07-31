@@ -198,12 +198,8 @@ To facilitate grading, testing, and system inspection, a dev-only Cheat Manager 
 * UI Toolkit (`com.unity.ui`)
 
 ### Opening the Project
-1. Clone the official repository:
-   ```bash
-   git clone https://github.com/YourOrganization/CinemaTycoon.git
-   ```
-2. Open Unity Hub, click **Add**, and select the root directory `CinemaTycoon`.
-3. Select Unity Version 6 and open the project.
+1. Open Unity Hub, click **Add**, and select the root directory `CinemaTycoon`.
+2. Select Unity Version 6 and open the project.
 
 ### Running in Editor
 1. In the Project window, navigate to `Assets/Scenes/`.
