@@ -1,33 +1,42 @@
-# Cinema Tycoon Project Management Evidence
+# Cinema Tycoon - Project Management Evidence
 
-This folder records the project's planned work, completed integration work, test responsibilities, and visual evidence for course submission. It is intentionally kept in the repository so the assessor can review project-management evidence without external access.
+This is a repository-backed delivery record for the course submission. It links work to concrete source files, screenshots, and Git commits rather than claiming a separate task-management tool that was not used for this project.
 
-## Delivery Register
+## Scope and Workstreams
 
-| Deliverable | Owner role | Status | Evidence |
-| --- | --- | --- | --- |
-| Multi-scene game flow | Systems / UI | Complete | `MainMenu` and `Demo` are enabled in Build Settings. |
-| Customer and staff AI | Gameplay | Complete | NavMesh FSM, task dispatch, and behavior scripts under `Assets/_CinemaTycoon/Scripts`. |
-| Economy, upgrades, and scheduling | Gameplay | Complete | Economy, Schedule, Staff, and Data folders. |
-| UI Toolkit menu and HUD | UI / UX | Complete | UXML, USS, bindings, pause, settings, credits, loss, and victory overlays. |
-| Audio routing | Audio / Systems | Ready for asset assignment | `GameManager` supports Master/Music/SFX Mixer routing; see `Assets/_CinemaTycoon/Audio/AUDIO_MIXER_SETUP.md`. |
-| Final recorded walkthrough | Documentation | Pending | Add the final YouTube URL to the root README before submission. |
-| Team member names and assigned roles | Team | Pending | Complete the role table below with real group members. |
+| Workstream | Delivered outcome | Repository evidence |
+| --- | --- | --- |
+| Core simulation | Customer behavior, staff roles, economy, movie scheduling, upgrades, and incidents | `Assets/_CinemaTycoon/Scripts/Customers`, `Staff`, `Economy`, `Schedule`, and `Events` |
+| Navigation and environment | NavMesh-driven customer/staff movement, seating, lobby, concessions, and hall spaces | `CinemaWaypoints`, customer FSM, and `Screenshots/` environment captures |
+| User experience | UI Toolkit HUD, management controls, menus, instructions, pause/restart, settings, credits, loss, and victory states | `UI/Toolkit/HUDLayout.uxml`, `HUDStyle.uss`, `UIToolkitHUDBindings.cs` |
+| Audio and feedback | Background music, shared UI click feedback, Master/Music/SFX control path, and Audio Mixer setup notes | `GameManager.cs`, `Assets/Audio`, and `Assets/_CinemaTycoon/Audio/AUDIO_MIXER_SETUP.md` |
+| Submission materials | README, gameplay screenshots, video walkthrough link, attribution, and QA checklist | `README.md`, `Screenshots/`, `ProjectManagement/` |
 
-## Role Matrix
+## Development Milestones
 
-| Team member | Primary role | Responsibilities | Evidence to attach before submission |
-| --- | --- | --- | --- |
-| _Add name_ | Gameplay systems | Economy, staff, scheduling, incidents | Commit history / walkthrough segment |
-| _Add name_ | AI and environment | NavMesh, customer behavior, scene setup | Commit history / screenshot |
-| _Add name_ | UI and presentation | UI Toolkit, menus, HUD, documentation | Commit history / screenshot |
-| _Add name_ | QA and submission | Builds, testing, video, README | Test log / final video |
+The current Git history provides the review trail below. Commit hashes are included so the assessor can inspect the corresponding changes directly.
 
-Do not submit this table with placeholders: replace each `_Add name_` entry with the real team member.
+| Date | Milestone | Commit evidence |
+| --- | --- | --- |
+| 2026-07-25 | README and project documentation baseline updated | `b429c79` |
+| 2026-07-26 | Main-menu work and developer cheat tooling added | `5aaaf59`, `718d834` |
+| 2026-07-29 | Project cleanup and serialization work | `f310808`, `8b75b52` |
+| 2026-07-30 to 2026-07-31 | Audio routing, mixer references, menu polish, walkthrough, and submission documentation finalized | `aeaecf5`, `8454f48`, `c998e35`, `518c4ce`, `3786307` |
 
-## Review Cadence
+## Contribution Record
 
-1. Integrate one feature at a time on a dedicated branch or commit.
-2. Test the Main Menu -> Demo -> Pause -> Restart -> Main Menu flow after every scene-management change.
-3. Record console errors, broken references, and test outcomes in `TEST_CHECKLIST.md`.
-4. Before submission, capture the final build flow and update the README video link, team details, and screenshots.
+Git commits in the current repository history are authored by **Rahat Abedin**. The work is organized by technical responsibility rather than an invented team-role table:
+
+- Gameplay systems: economy, scheduling, staff behavior, customer behavior, events, and progression.
+- Technical systems: scene flow, persistent `GameManager`, audio routing, NavMesh, and debugging support.
+- UI and presentation: UI Toolkit layouts/styles, menus, settings, win/loss screens, screenshot selection, and README.
+- Quality assurance and submission: Build Settings review, documented manual test checklist, video link, and asset attribution.
+
+If additional contributors participated outside the visible Git history, add their real names and contributions here before submission; do not add placeholder names.
+
+## Review Process Used
+
+1. Make focused changes and preserve a Git commit trail for feature integration.
+2. Verify scene flow after menu, pause, restart, audio, and state-management changes.
+3. Record static checks and outstanding manual verification in `TEST_CHECKLIST.md`.
+4. Maintain presentation evidence in `Screenshots/` and link the final walkthrough from the README.
