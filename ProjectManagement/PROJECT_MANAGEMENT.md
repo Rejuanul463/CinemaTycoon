@@ -26,15 +26,6 @@ This document records the development plan and review record for the course subm
 | 27 July | Playtest and polish | Menu navigation, pausing, restart behaviour, end screens, and UI readability were checked; issues were recorded for correction. |
 | 28 July | Prepare the assessment submission | README, screenshots, walkthrough link, asset attribution, project-management record, and manual test checklist were finalized. |
 
-## Responsibilities
-
-**Rahat Abedin** — project development and submission preparation:
-
-- Gameplay: economy, scheduling, staff behaviour, customer behaviour, events, and progression.
-- Technical setup: scene flow, persistent `GameManager`, audio routing, NavMesh, and debugging support.
-- UI and presentation: UI Toolkit layouts/styles, menus, settings, win/loss screens, screenshots, and README.
-- Quality review: Build Settings review, documented manual checks, walkthrough link, and asset attribution.
-
 ## Review Process
 
 1. Work was completed in small feature areas, then checked in the relevant Unity scene.
