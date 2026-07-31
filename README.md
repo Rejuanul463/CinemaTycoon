@@ -267,11 +267,3 @@ The architecture relies on a centralized singleton coordinator pattern combined 
 * **Description**: A 5 to 10 minute narrated walkthrough showcasing game setup, menu flow, customer AI pathfinding, staff hiring, incident resolution, upgrade purchases, and cheat manager operations.
 
 ---
-
-## Project Team and Credits
-
-Developed as part of the Unity Course Project requirement.
-
-* **Development Team**: Group Project Submission
-* **Course**: Unity Game Development Course
-* **Institution**: Computer Science / Game Development Department
