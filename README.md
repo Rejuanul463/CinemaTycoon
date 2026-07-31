@@ -267,7 +267,7 @@ The architecture relies on a centralized singleton coordinator pattern combined 
 | ![Popcorn stand](Screenshots/Popcorn%20stand%20in%20the%20lobbyy.PNG) | ![Customers seated in hall](Screenshots/Hall%20Seats%20with%20customers%20sitting%20there.PNG) |
 
 ### Video Demonstration
-* **YouTube Video Link**: _Add the final 5-10 minute narrated walkthrough URL before submission._
+* **YouTube Video Link**: [Cinema Tycoon narrated walkthrough](https://youtu.be/tvuFHeQwJGc?si=gNSKj6hJ6A3JHsMj)
 * **Description**: A 5 to 10 minute narrated walkthrough showcasing game setup, menu flow, customer AI pathfinding, staff hiring, incident resolution, upgrade purchases, and cheat manager operations.
 
 ---
